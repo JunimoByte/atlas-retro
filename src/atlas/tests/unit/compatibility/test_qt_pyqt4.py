@@ -2,7 +2,7 @@
 
 import importlib
 import sys
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -40,7 +40,9 @@ def test_qt_resolution_switches_to_pyqt4_when_available(
     mock_pyqt4.QtGui = mock_qtgui
 
     # Simulate flat enums on Qt and QMessageBox
-    mock_qtcore.Qt = type("Qt", (), {"Dialog": 3, "AlignTop": 32, "Horizontal": 1})()
+    mock_qtcore.Qt = type(
+        "Qt", (), {"Dialog": 3, "AlignTop": 32, "Horizontal": 1}
+    )()
     mock_qtgui.QMessageBox = type(
         "QMessageBox", (), {"Ok": 1024, "Information": 1}
     )()

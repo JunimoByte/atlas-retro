@@ -12,7 +12,6 @@ import logging
 import math
 import os
 import shutil
-import sys
 import time
 from pathlib import Path
 from typing import Optional, Tuple, Union
@@ -176,7 +175,9 @@ def _get_free_disk_space(path_str: str) -> Optional[int]:
         try:
             drive = os.path.splitdrive(str(path_str))[0]
             if drive:
-                drive_root = drive + "\\" if not drive.endswith("\\") else drive
+                drive_root = (
+                    drive + "\\" if not drive.endswith("\\") else drive
+                )
                 if drive_root != str(path_str):
                     _, _, free = shutil.disk_usage(drive_root)
                     return free
@@ -220,7 +221,9 @@ def check_disk_space(
             os.makedirs(output_dir_str, exist_ok=True)
         free = _get_free_disk_space(output_dir_str)
         if free is None:
-            LOGGER.warning("Could not determine free disk space for %s", output_dir)
+            LOGGER.warning(
+                "Could not determine free disk space for %s", output_dir
+            )
             return False, "Unknown"
 
         required_space = int(estimated_size_bytes * 1.5)

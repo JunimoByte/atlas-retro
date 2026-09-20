@@ -8,7 +8,6 @@ without invoking the PyQt GUI.
 # IMPORTS
 # =============================================================================
 
-import argparse
 import sys
 
 from atlas.backup.pipeline import Pipeline, PipelineResult
@@ -32,7 +31,9 @@ def _on_progress(current, total):
     if total <= 0:
         return
     percent = int((current / total) * 100)
-    text = "[Backup] Progress: {}% ({}/{} files)".format(percent, current, total)
+    text = "[Backup] Progress: {}% ({}/{} files)".format(
+        percent, current, total
+    )
     if sys.stdout.isatty():
         sys.stdout.write("\r{}".format(text[:78].ljust(78)))
         sys.stdout.flush()

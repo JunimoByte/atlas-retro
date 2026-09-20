@@ -54,7 +54,9 @@ def _extract_version_from_file(path: Path) -> Optional[str]:
         if not path.is_file():
             return None
         section = None
-        with open(str(path), "r", encoding="utf-8-sig", errors="replace") as fh:
+        with open(
+            str(path), "r", encoding="utf-8-sig", errors="replace"
+        ) as fh:
             content = fh.read()
         for line in content.splitlines():
             line = line.strip()

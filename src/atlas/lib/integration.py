@@ -67,7 +67,10 @@ def open_folder(folder_path: Optional[Path] = None) -> None:
             )
             return
 
-        folder = folder_path.resolve()
+        try:
+            folder = Path(os.path.abspath(str(folder_path)))
+        except Exception:
+            folder = folder_path
 
         if not folder.exists():
             LOGGER.warning("Selected folder missing: %s", folder)

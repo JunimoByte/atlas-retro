@@ -353,7 +353,7 @@ def test_write_file_to_zip_python34_writestr(
 
 
 def test_unique_sources_handles_nonexistent_paths(tmp_path: Path) -> None:
-    """Ensure nonexistent paths do not raise FileNotFoundError in _unique_sources."""
+    """Ensure nonexistent paths do not raise in _unique_sources."""
     existing = tmp_path / "existing"
     existing.mkdir()
     nonexistent = tmp_path / "does_not_exist"

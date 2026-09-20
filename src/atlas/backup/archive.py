@@ -131,6 +131,26 @@ def _resolve_output_zip_path(zip_name: str) -> Path:
     return zip_path
 
 
+def _stream_write_file(
+    zip_file: zipfile.ZipFile,
+    file_path: Path,
+    zip_info: zipfile.ZipInfo,
+    cancel_callback: Optional[Callable[[], bool]] = None,
+) -> bool:
+    """Stream file content in chunks into zip archive (Python 3.6+)."""
+    with file_path.open("rb") as src_file:
+        with zip_file.open(zip_info, "w") as dest_file:
+            read = src_file.read
+            while True:
+                chunk = read(CHUNK_SIZE)
+                if not chunk:
+                    break
+                if cancel_callback and cancel_callback():
+                    return False
+                dest_file.write(chunk)
+    return True
+
+
 def _write_file_to_zip(
     zip_file: zipfile.ZipFile,
     file_path: Path,
@@ -166,25 +186,18 @@ def _write_file_to_zip(
 
     try:
         # In Python 3.6+, ZipFile.open supports mode="w" for chunked streaming.
-        # In Python 3.4 and 3.5, ZipFile.open only supports mode="r", "U", "rU",
-        # so we fall back to reading the file and using writestr.
+        # In Python 3.4/3.5, ZipFile.open only supports "r", "U", "rU", so we
+        # fall back to reading the file and using writestr.
         if sys.version_info >= (3, 6) and hasattr(zip_file, "_open_to_write"):
-            with file_path.open("rb") as src_file:
-                with zip_file.open(zip_info, "w") as dest_file:
-                    read = src_file.read
-                    while True:
-                        chunk = read(CHUNK_SIZE)
-                        if not chunk:
-                            break
-                        if cancel_callback and cancel_callback():
-                            return False
-                        dest_file.write(chunk)
-        else:
-            with file_path.open("rb") as src_file:
-                data = src_file.read()
-            if cancel_callback and cancel_callback():
-                return False
-            zip_file.writestr(zip_info, data)
+            return _stream_write_file(
+                zip_file, file_path, zip_info, cancel_callback
+            )
+
+        with file_path.open("rb") as src_file:
+            data = src_file.read()
+        if cancel_callback and cancel_callback():
+            return False
+        zip_file.writestr(zip_info, data)
         return True
     except OSError as error:
         # If disk is full, we must abort the backup completely.

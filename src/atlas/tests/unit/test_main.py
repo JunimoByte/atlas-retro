@@ -47,3 +47,34 @@ def test_main_routes_to_gui() -> None:
                 main.main()
             assert exc_info.value.code == 0
             mock_gui.assert_called_once()
+
+
+def test_main_routes_to_cli_when_no_display(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify headless POSIX environment without DISPLAY falls back to CLI."""
+    monkeypatch.setattr(main.os, "name", "posix")
+    monkeypatch.setattr(main.sys, "platform", "linux")
+    monkeypatch.delenv("DISPLAY", raising=False)
+    monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
+
+    with patch.object(sys, "argv", ["atlas"]):
+        with patch("atlas.cli.run_cli", return_value=0) as mock_cli:
+            with pytest.raises(SystemExit) as exc_info:
+                main.main()
+            assert exc_info.value.code == 0
+            mock_cli.assert_called_once()
+
+
+def test_main_routes_to_cli_when_pyqt_missing() -> None:
+    """Verify missing PyQt falls back to CLI."""
+    with patch.object(sys, "argv", ["atlas"]):
+        with patch(
+            "atlas.gui.run_gui",
+            side_effect=ImportError("No module named 'PyQt4'"),
+        ):
+            with patch("atlas.cli.run_cli", return_value=0) as mock_cli:
+                with pytest.raises(SystemExit) as exc_info:
+                    main.main()
+                assert exc_info.value.code == 0
+                mock_cli.assert_called_once()

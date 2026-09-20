@@ -9,7 +9,7 @@ Handles button manipulation, visibility, and elapsed time formatting.
 # =============================================================================
 
 import logging
-from typing import Any, Callable, Mapping, Optional, Tuple
+from typing import Any, Callable, Mapping, Optional
 
 from atlas.compatibility.qt import QtWidgets
 
@@ -110,7 +110,11 @@ def _get_button(
 ) -> Optional[QtWidgets.QAbstractButton]:
     """Retrieve a button safely by name."""
     try:
-        btn_scope = getattr(QtWidgets.QDialogButtonBox, "StandardButton", QtWidgets.QDialogButtonBox)
+        btn_scope = getattr(
+            QtWidgets.QDialogButtonBox,
+            "StandardButton",
+            QtWidgets.QDialogButtonBox,
+        )
         type_ = getattr(btn_scope, name)
         return button_box.button(type_)
     except (KeyError, AttributeError):

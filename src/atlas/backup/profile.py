@@ -13,7 +13,7 @@ import logging
 import os
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Dict, List, Optional, Union
 
 from atlas.lib import browsers as browsers_list
 from atlas.lib.read import load_json
@@ -98,7 +98,10 @@ def _validate_profile_path(
             _PATH_CACHE[cache_key] = None
             return None
 
-        resolved_base = path.resolve()
+        try:
+            resolved_base = path.resolve()
+        except Exception:
+            resolved_base = Path(os.path.abspath(str(path)))
 
         if signature and isinstance(signature, (str, list)):
             signatures = (

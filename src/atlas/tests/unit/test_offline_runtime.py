@@ -2,7 +2,7 @@
 
 import socket
 from types import SimpleNamespace
-from typing import Any, List, Tuple
+from typing import Any
 
 import pytest
 

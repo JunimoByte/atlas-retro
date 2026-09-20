@@ -55,6 +55,8 @@ except Exception:
     pass
 
 # 3. Protection against None stdout/stderr in PyInstaller windowed mode
+
+
 class _NullStream:
     def write(self, *args, **kwargs):
         pass
@@ -72,11 +74,11 @@ if sys.stderr is None:
 # IMPORTS & LOGGING
 # =============================================================================
 
-import logging
-import traceback
+import logging  # noqa: E402
+import traceback  # noqa: E402
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
 )
 
@@ -88,7 +90,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def _show_fatal_dialog(tb_text: str) -> None:
-    """Write crash log and show diagnostic message box on Windows."""
+    """Write crash log and show diagnostic message box if on Windows."""
     try:
         temp_dir = os.environ.get("TEMP", os.environ.get("TMP", "."))
         crash_log = os.path.join(temp_dir, "atlas_crash.log")
@@ -97,19 +99,20 @@ def _show_fatal_dialog(tb_text: str) -> None:
     except Exception:
         pass
 
-    try:
-        import ctypes
+    if sys.platform == "win32":
+        try:
+            import ctypes
 
-        ctypes.windll.user32.MessageBoxW(
-            0,
-            "Atlas encountered an error during startup:\n\n"
-            + tb_text
-            + "\n\nA crash log was saved to %TEMP%\\atlas_crash.log",
-            "Atlas Startup Error",
-            0x10,  # MB_ICONERROR
-        )
-    except Exception:
-        pass
+            ctypes.windll.user32.MessageBoxW(
+                0,
+                "Atlas encountered an error during startup:\n\n"
+                + tb_text
+                + "\n\nA crash log was saved to %TEMP%\\atlas_crash.log",
+                "Atlas Startup Error",
+                0x10,  # MB_ICONERROR
+            )
+        except Exception:
+            pass
 
 
 def main() -> None:
@@ -126,31 +129,47 @@ def main() -> None:
 
         sys.exit(run_cli(args))
     else:
-        from atlas.gui import run_gui
+        # On POSIX/Linux, check if a graphical display is available.
+        # If no DISPLAY or WAYLAND_DISPLAY is set (e.g. over SSH/console),
+        # gracefully fall back to headless CLI mode rather than crashing.
+        if (
+            os.name == "posix"
+            and sys.platform != "darwin"
+            and not os.environ.get("DISPLAY")
+            and not os.environ.get("WAYLAND_DISPLAY")
+        ):
+            LOGGER.info(
+                "No graphical display detected ($DISPLAY is unset). "
+                "Launching in headless CLI mode."
+            )
+            from atlas.cli import run_cli
 
-        sys.exit(run_gui(args))
+            sys.exit(run_cli(args))
+
+        try:
+            from atlas.gui import run_gui
+
+            sys.exit(run_gui(args))
+        except ImportError as err:
+            # If PyQt is missing on Linux, inform the user and fall back to CLI
+            if "PyQt" in str(err) or "qt" in str(err).lower():
+                LOGGER.warning(
+                    "PyQt GUI runtime not found (%s). "
+                    "Falling back to headless CLI mode.",
+                    err,
+                )
+                from atlas.cli import run_cli
+
+                sys.exit(run_cli(args))
+            raise
 
 
 # Entry point
 if __name__ == "__main__":
-    try:
-        sys.stdout.write("========================================\n")
-        sys.stdout.write("  Atlas - Windows XP Debug Console\n")
-        sys.stdout.write("========================================\n")
-        sys.stdout.flush()
-    except Exception:
-        pass
-
     try:
         main()
     except Exception:
         tb = traceback.format_exc()
         LOGGER.error("Fatal error during execution:\n%s", tb)
         _show_fatal_dialog(tb)
-        try:
-            sys.stdout.write("\nPress Enter to exit...\n")
-            sys.stdout.flush()
-            input()
-        except Exception:
-            pass
         sys.exit(1)

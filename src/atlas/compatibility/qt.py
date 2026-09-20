@@ -185,8 +185,10 @@ if not hasattr(QtCore.Qt, "HighDpiScaleFactorRoundingPolicy"):
         pass
 
 # Shim scoped enums for PyQt4 and PyQt5 compatibility
+
+
 class _MetaScope(type):
-    """Metaclass that proxies scoped enum attribute access to parent and target."""
+    """Proxy scoped enum attribute access to parent and target."""
 
     def __getattr__(cls, name):
         if hasattr(cls._parent, name):
@@ -199,7 +201,10 @@ class _MetaScope(type):
 
     def __instancecheck__(cls, instance):
         if cls._target and isinstance(cls._target, type):
-            return isinstance(instance, cls._target) or isinstance(instance, int)
+            return (
+                isinstance(instance, cls._target)
+                or isinstance(instance, int)
+            )
         return isinstance(instance, int)
 
 
@@ -246,13 +251,17 @@ for _target_cls in (QtWidgets.QApplication, QtWidgets.QDialog):
 if QT_API == "PyQt4":
     _orig_translate = getattr(QtCore.QCoreApplication, "translate", None)
     if _orig_translate is not None:
-        def _safe_translate(context, key, disambiguation=None, encoding=None, n=-1):
+        def _safe_translate(
+            context, key, disambiguation=None, encoding=None, n=-1
+        ):
             try:
                 utf8 = getattr(QtGui.QApplication, "UnicodeUTF8", None)
                 if encoding is None and utf8 is not None:
                     return _orig_translate(context, key, disambiguation, utf8)
                 elif encoding is not None:
-                    return _orig_translate(context, key, disambiguation, encoding)
+                    return _orig_translate(
+                        context, key, disambiguation, encoding
+                    )
                 return _orig_translate(context, key)
             except Exception:
                 return key

@@ -189,7 +189,9 @@ def _shell_known_folder_path() -> Optional[Path]:
 
         shell32 = ctypes.windll.shell32
         if not hasattr(shell32, "SHGetKnownFolderPath"):
-            LOGGER.debug("SHGetKnownFolderPath not available (legacy Windows).")
+            LOGGER.debug(
+                "SHGetKnownFolderPath not available (legacy Windows)."
+            )
             return None
 
         # FOLDERID_Downloads GUID

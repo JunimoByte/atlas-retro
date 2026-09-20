@@ -34,7 +34,9 @@ _ICON_CRIT = getattr(_MB.Icon, "Critical", getattr(_MB, "Critical", 3))
 _ICON_QUES = getattr(_MB.Icon, "Question", getattr(_MB, "Question", 4))
 
 _BTN_OK = getattr(_MB.StandardButton, "Ok", getattr(_MB, "Ok", 1024))
-_BTN_CANCEL = getattr(_MB.StandardButton, "Cancel", getattr(_MB, "Cancel", 4194304))
+_BTN_CANCEL = getattr(
+    _MB.StandardButton, "Cancel", getattr(_MB, "Cancel", 4194304)
+)
 _BTN_YES = getattr(_MB.StandardButton, "Yes", getattr(_MB, "Yes", 16384))
 _BTN_NO = getattr(_MB.StandardButton, "No", getattr(_MB, "No", 65536))
 

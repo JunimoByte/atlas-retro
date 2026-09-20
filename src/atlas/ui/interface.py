@@ -9,7 +9,6 @@ and buttons.
 # =============================================================================
 
 import logging
-from typing import Tuple
 
 from atlas.compatibility.qt import QtCore, QtGui, QtWidgets
 

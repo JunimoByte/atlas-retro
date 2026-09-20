@@ -304,7 +304,12 @@ class WindowsThemer:
             if cls._supports_native():
                 cls._apply_native(window, dark)
             else:
-                ver_major = getattr(sys.getwindowsversion(), "major", 10) if ThemeDetector._is_windows() else 10
+                if ThemeDetector._is_windows():
+                    ver_major = getattr(
+                        sys.getwindowsversion(), "major", 10
+                    )
+                else:
+                    ver_major = 10
                 if ver_major >= 6:
                     try:
                         WindowsChromeManager.apply_chrome(window, dark)
@@ -327,6 +332,8 @@ class WindowsThemer:
         fallbacks; native dynamic QStyleHints.setColorScheme was only
         introduced in Qt 6.5+.
         """
+        if QT_API in ("PyQt4", "PyQt5"):
+            return False
         return False
 
     @classmethod
@@ -343,7 +350,11 @@ class WindowsThemer:
                 LOGGER.debug("Could not apply windows11 style: %s", error)
 
         gui_app = getattr(QtGui, "QGuiApplication", None)
-        hints = gui_app.styleHints() if gui_app and hasattr(gui_app, "styleHints") else None
+        hints = (
+            gui_app.styleHints()
+            if gui_app and hasattr(gui_app, "styleHints")
+            else None
+        )
         if hints and hasattr(hints, "setColorScheme"):
             hints.setColorScheme(QtCore.Qt.ColorScheme.Unknown)
 
@@ -459,6 +470,11 @@ class ImageManager:
                 return
 
             loaded_icon = QtGui.QIcon(icon_path)
+            if loaded_icon.isNull() and icon_filename.endswith(".svg"):
+                fallback_ico = cls.resource_path("icons/Icon.ico")
+                if fallback_ico and os.path.exists(fallback_ico):
+                    loaded_icon = QtGui.QIcon(fallback_ico)
+
             if loaded_icon.isNull():
                 LOGGER.warning("Icon could not be loaded: %s", icon_path)
                 return
@@ -488,7 +504,11 @@ def initialize(window) -> None:
 
     try:
         gui_app = getattr(QtGui, "QGuiApplication", None)
-        hints = gui_app.styleHints() if gui_app and hasattr(gui_app, "styleHints") else None
+        hints = (
+            gui_app.styleHints()
+            if gui_app and hasattr(gui_app, "styleHints")
+            else None
+        )
         if hints and hasattr(hints, "colorSchemeChanged"):
 
             def _safe_apply():

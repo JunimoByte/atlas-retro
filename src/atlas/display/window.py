@@ -11,7 +11,7 @@ and user interactions.
 
 import logging
 from enum import Enum
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional
 
 from atlas.compatibility.qt import QtCore, QtGui, QtWidgets
 from atlas.display.controller import Controller, ControllerState

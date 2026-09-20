@@ -41,7 +41,7 @@ setup_venv() {
         return 0
     fi
     echo "Creating virtual environment..."
-    python3 -m venv "$VENV_PATH" || {
+    python3 -m venv --system-site-packages "$VENV_PATH" || {
         echo "ERROR: Failed to create venv. Install python3-venv and retry."
         return 1 2>/dev/null || exit 1
     }

@@ -200,6 +200,6 @@ exe = _safe_build(
     strip=False,
     upx=False,
     runtime_tmpdir=None,
-    console=True,
+    console=False,
     icon=_icon,
 )
