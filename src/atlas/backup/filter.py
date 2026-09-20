@@ -12,6 +12,7 @@ import os
 from pathlib import Path
 from typing import Callable, Generator, List, Optional, Tuple
 
+from atlas.backup.disk import safe_scandir
 from atlas.lib.read import load_json
 
 # =============================================================================
@@ -89,7 +90,7 @@ def scan_files(  # noqa: C901
             current_dir = stack.pop()
 
             try:
-                with os.scandir(current_dir) as entries:
+                with safe_scandir(current_dir) as entries:
                     for entry in entries:
                         if cancel_callback and cancel_callback():
                             return

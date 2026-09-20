@@ -13,8 +13,9 @@ For more information on ADRs, see [adr.github.io](https://adr.github.io/).
 5. [Project Structure: src/atlas Layout](0005-project-structure.md)
 6. [Package Structuring: atlas Package](0006-package-structuring.md)
 7. [Import Strategy: Absolute Imports with atlas Prefix](0007-import-strategy.md)
-8. [Linux AppImage Packaging](0008-linux-appimage-packaging.md)
-9. [Debian Package Distribution](0009-debian-package-distribution.md)
-10. [FreeBSD Package Distribution](0010-freebsd-package-distribution.md)
+8. *(Superseded / Removed: Linux AppImage Packaging)*
+9. *(Superseded / Removed: Debian Package Distribution)*
+10. *(Superseded / Removed: FreeBSD Package Distribution)*
 11. [Command-Line Argument Parsing: atlas.args](0011-argument-parsing.md)
-12. [Windows MSIX Packaging and Microsoft Store Distribution](0012-windows-msix-distribution.md)
+12. *(Superseded / Removed: Windows MSIX Packaging and Microsoft Store Distribution)*
+13. [Targeting Windows XP: Python 3.4, PyQt4, and Platform Trimming](0013-windows-xp-retro-pivot.md)

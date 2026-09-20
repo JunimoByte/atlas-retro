@@ -1,4 +1,0 @@
-#!/bin/sh
-# Keep Debian integration minimal while the self-contained application stays
-# under /opt/atlas.
-exec /opt/atlas/atlas "$@"

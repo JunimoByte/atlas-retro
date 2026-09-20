@@ -44,8 +44,8 @@ class Worker(QtCore.QObject):
 
     def __init__(self, parent: Optional[QtCore.QObject] = None) -> None:
         """Initialize the Worker."""
-        super().__init__(parent)
-        self._pipeline: Optional[Pipeline] = None
+        super(Worker, self).__init__(parent)
+        self._pipeline = None
 
     # =========================================================================
     # PUBLIC METHODS

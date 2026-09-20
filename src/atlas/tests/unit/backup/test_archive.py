@@ -329,6 +329,40 @@ def test_compress_rejects_zip_name_that_escapes_output_dir(
     assert not (tmp_path / "escape.zip").exists()
 
 
+def test_write_file_to_zip_python34_writestr(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify writing files via writestr on Python 3.4 (no open mode 'w')."""
+    monkeypatch.setattr(sys, "version_info", (3, 4, 4, "final", 0))
+
+    source_file = tmp_path / "sample.txt"
+    source_file.write_text("retro test content")
+
+    zip_path = tmp_path / "out.zip"
+    with zipfile.ZipFile(str(zip_path), "w", zipfile.ZIP_DEFLATED) as zf:
+        zip_info = archive.create_zip_info(source_file)
+        zip_info.filename = "sample.txt"
+        success = archive._write_file_to_zip(zf, source_file, zip_info)
+        assert success is True
+
+    with zipfile.ZipFile(str(zip_path), "r") as zf:
+        assert zf.namelist() == ["sample.txt"]
+        assert zf.read("sample.txt") == b"retro test content"
+        info = zf.getinfo("sample.txt")
+        assert info.compress_type == zipfile.ZIP_DEFLATED
+
+
+def test_unique_sources_handles_nonexistent_paths(tmp_path: Path) -> None:
+    """Ensure nonexistent paths do not raise FileNotFoundError in _unique_sources."""
+    existing = tmp_path / "existing"
+    existing.mkdir()
+    nonexistent = tmp_path / "does_not_exist"
+
+    sources = archive._unique_sources([existing, nonexistent])
+    assert len(sources) == 1
+    assert sources[0].name == "existing"
+
+
 # =============================================================================
 # TEST EXECUTION
 # =============================================================================

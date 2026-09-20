@@ -35,12 +35,12 @@ LOGGER = logging.getLogger(__name__)
 # CONSTANTS
 # =============================================================================
 
-VALID_SIGNALS: Tuple[str, ...] = (
+VALID_SIGNALS = (
     "accepted",
     "rejected",
 )
-BUTTON_NAMES: Tuple[str, ...] = ("Ok", "Cancel")
-UI_ELEMENTS: Tuple[str, ...] = (
+BUTTON_NAMES = ("Ok", "Cancel")
+UI_ELEMENTS = (
     "progress_bar",
     "progress_description",
     "completed_description",
@@ -99,10 +99,10 @@ class Window(QtWidgets.QDialog):
 
     def __init__(self) -> None:
         """Initialize the main window and prepare UI."""
-        super().__init__()
-        self.formatted_size: str = ""
-        self._last_elapsed_text: str = ""
-        self.latest_scanned_info: str = ""
+        super(Window, self).__init__()
+        self.formatted_size = ""
+        self._last_elapsed_text = ""
+        self.latest_scanned_info = ""
 
         self.signals = Signals()
         self.controller = Controller(self.signals)
@@ -152,7 +152,7 @@ class Window(QtWidgets.QDialog):
         for name in UI_ELEMENTS:
             if not hasattr(self.interface, name):
                 raise AttributeError(
-                    f"UI element '{name}' not found on interface"
+                    "UI element '{}' not found on interface".format(name)
                 )
 
         for mode, config in self.UI_MODE_CONFIG.items():
@@ -161,8 +161,8 @@ class Window(QtWidgets.QDialog):
                 cmd = conf.get("command")
                 if isinstance(cmd, str) and not hasattr(self, cmd):
                     raise AttributeError(
-                        f"UI_MODE_CONFIG references missing method '{cmd}' "
-                        f"in mode {mode.name}"
+                        "UI_MODE_CONFIG references missing method '{}' "
+                        "in mode {}".format(cmd, mode.name)
                     )
 
     def _setup_buttons(self) -> None:
@@ -198,7 +198,7 @@ class Window(QtWidgets.QDialog):
 
         # Mode configuration: (Visible Elements, Button Configs...)
         # Each button config corresponds to a button in BUTTON_NAMES
-        config: Tuple = self.UI_MODE_CONFIG.get(
+        config = self.UI_MODE_CONFIG.get(
             mode, ([],) + ({},) * len(BUTTON_NAMES)
         )
         visible_elements, *button_confs = config
@@ -364,7 +364,7 @@ class Window(QtWidgets.QDialog):
         if self.controller.state == ControllerState.RUNNING:
             self._handle_cancel_button()
         else:
-            super().reject()
+            super(Window, self).reject()
 
     def closeEvent(self, event: Any) -> None:  # noqa: N802
         """Handle cleanup on close."""
@@ -375,7 +375,7 @@ class Window(QtWidgets.QDialog):
 
     def resizeEvent(self, event: Any) -> None:  # noqa: N802
         """Handle scaling of the backdrop on window resize."""
-        super().resizeEvent(event)
+        super(Window, self).resizeEvent(event)
 
         if hasattr(self, "interface") and hasattr(self.interface, "backdrop"):
             self.interface.backdrop.setGeometry(self.rect())

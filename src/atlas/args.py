@@ -21,7 +21,7 @@ from typing import List, Optional, Sequence
 _VERSION_REGEX = re.compile(
     r'^\s*version\s*=\s*["\']([0-9A-Za-z_.\-+]+)["\']'
 )
-_CACHED_VERSION: Optional[str] = None
+_CACHED_VERSION = None
 
 # =============================================================================
 # HELPERS
@@ -30,7 +30,7 @@ _CACHED_VERSION: Optional[str] = None
 
 def _get_candidate_toml_paths() -> List[Path]:
     """Assemble candidate filesystem locations for pyproject.toml."""
-    candidates: List[Path] = []
+    candidates = []
     try:
         parents = Path(__file__).resolve().parents
         if len(parents) >= 3:
@@ -54,9 +54,9 @@ def _extract_version_from_file(path: Path) -> Optional[str]:
         if not path.is_file():
             return None
         section = None
-        for line in path.read_text(
-            encoding="utf-8-sig", errors="replace"
-        ).splitlines():
+        with open(str(path), "r", encoding="utf-8-sig", errors="replace") as fh:
+            content = fh.read()
+        for line in content.splitlines():
             line = line.strip()
             if line.startswith("[") and line.endswith("]"):
                 section = line[1:-1].strip().lower()
@@ -87,20 +87,11 @@ def get_version(*, force_refresh: bool = False) -> str:
             _CACHED_VERSION = resolved
             return _CACHED_VERSION
 
-    try:
-        import importlib.metadata
-
-        _CACHED_VERSION = importlib.metadata.version("atlas")
-        return _CACHED_VERSION
-    except Exception:
-        # PackageNotFoundError if atlas is not installed as a package
-        pass
-
     _CACHED_VERSION = "1.2"
     return _CACHED_VERSION
 
 
-VERSION: str = get_version()
+VERSION = get_version()
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -112,7 +103,7 @@ def build_parser() -> argparse.ArgumentParser:
         "-v",
         "--version",
         action="version",
-        version=f"Atlas {VERSION}",
+        version="Atlas {}".format(VERSION),
         help="Show program's version number and exit.",
     )
     parser.add_argument(

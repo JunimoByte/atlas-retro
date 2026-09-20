@@ -12,11 +12,13 @@ import logging
 import math
 import os
 import shutil
+import sys
 import time
 from pathlib import Path
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 
 from atlas.backup.archive import get_zip_output_dir
+from atlas.backup.disk import safe_scandir
 from atlas.lib.read import load_json
 
 # =============================================================================
@@ -121,12 +123,11 @@ def get_directory_size(  # noqa: C901
     """
     total = 0
     start_time = time.monotonic()
-    scan_incomplete = False
 
     try:
-        root = Path(path_str).resolve()
-    except OSError:
-        root = Path(path_str).absolute()
+        root = Path(os.path.abspath(str(path_str)))
+    except Exception:
+        root = Path(path_str)
 
     if not root.exists() or not root.is_dir():
         return 0
@@ -147,7 +148,7 @@ def get_directory_size(  # noqa: C901
             )
 
         try:
-            with os.scandir(current_dir) as entries:
+            with safe_scandir(current_dir) as entries:
                 for entry in entries:
                     try:
                         if entry.is_dir(follow_symlinks=False):
@@ -159,18 +160,32 @@ def get_directory_size(  # noqa: C901
                         LOGGER.debug(
                             "Error accessing %s: %s", entry.path, error
                         )
-                        scan_incomplete = True
         except OSError as error:
             LOGGER.debug("Cannot scan directory %s: %s", current_dir, error)
-            scan_incomplete = True
-
-    if scan_incomplete:
-        raise ScanError(
-            "Directory scan was incomplete due to inaccessible "
-            "paths: {}".format(path_str)
-        )
 
     return total
+
+
+def _get_free_disk_space(path_str: str) -> Optional[int]:
+    """Get free disk space in bytes for path, with Windows XP fallbacks."""
+    try:
+        _, _, free = shutil.disk_usage(str(path_str))
+        return free
+    except OSError:
+        # Fallback to drive root (e.g. C:\) if subfolder path fails
+        try:
+            drive = os.path.splitdrive(str(path_str))[0]
+            if drive:
+                drive_root = drive + "\\" if not drive.endswith("\\") else drive
+                if drive_root != str(path_str):
+                    _, _, free = shutil.disk_usage(drive_root)
+                    return free
+        except OSError:
+            pass
+    except Exception as error:
+        LOGGER.debug("disk_usage error on %s: %s", path_str, error)
+
+    return None
 
 
 def check_disk_space(
@@ -195,13 +210,18 @@ def check_disk_space(
         return False, "Unknown"
 
     try:
-        output_dir = (
-            Path(output_path).resolve()
-            if output_path
-            else get_zip_output_dir()
-        )
-        output_dir.mkdir(parents=True, exist_ok=True)
-        _, _, free = shutil.disk_usage(output_dir)
+        if output_path:
+            output_dir = Path(os.path.abspath(str(output_path)))
+        else:
+            output_dir = get_zip_output_dir()
+
+        output_dir_str = str(output_dir)
+        if not os.path.isdir(output_dir_str):
+            os.makedirs(output_dir_str, exist_ok=True)
+        free = _get_free_disk_space(output_dir_str)
+        if free is None:
+            LOGGER.warning("Could not determine free disk space for %s", output_dir)
+            return False, "Unknown"
 
         required_space = int(estimated_size_bytes * 1.5)
         has_sufficient_space = free >= required_space
@@ -223,11 +243,15 @@ def create_output_dir(output_path: Union[str, Path, None] = None) -> Path:
         Path: Path to the created output directory.
 
     """
-    output_dir = (
-        Path(output_path).resolve() if output_path else get_zip_output_dir()
-    )
+    if output_path:
+        output_dir = Path(os.path.abspath(str(output_path)))
+    else:
+        output_dir = get_zip_output_dir()
+
     try:
-        output_dir.mkdir(parents=True, exist_ok=True)
+        output_dir_str = str(output_dir)
+        if not os.path.isdir(output_dir_str):
+            os.makedirs(output_dir_str, exist_ok=True)
         LOGGER.info("Output directory ready: %s", output_dir)
     except OSError as error:
         LOGGER.error("Failed to create output directory: %s", error)

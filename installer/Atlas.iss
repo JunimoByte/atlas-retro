@@ -1,9 +1,9 @@
-; Atlas Installer Script
+; Atlas Installer Script (Windows XP Compatible)
 
 #define MyAppName "Atlas"
 #define MyAppVersion "1.2"
 #define MyAppPublisher "Michael Dorman"
-#define MyAppURL "https://junimobyte.github.io/atlas-website/"
+#define MyAppURL "https://github.com/JunimoByte/atlas-retro"
 
 ; Select the PyInstaller output and installer architecture from the file that
 ; actually exists in dist. Refuse an ambiguous directory rather than package
@@ -37,7 +37,10 @@ AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
 
-DefaultDirName={autopf}\{#MyAppName}
+; Target Windows XP SP3+
+MinVersion=5.1.2600
+
+DefaultDirName={pf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 UninstallDisplayIcon={app}\{#MyAppExeName}
 
@@ -45,18 +48,16 @@ UninstallDisplayIcon={app}\{#MyAppExeName}
 SetupIconFile=..\assets\icons\Icon.ico
 
 #if MyAppIs64Bit
-ArchitecturesAllowed=x64compatible
-ArchitecturesInstallIn64BitMode=x64compatible
+ArchitecturesAllowed=x64
+ArchitecturesInstallIn64BitMode=x64
 #endif
 
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 
 OutputBaseFilename=Atlas-{#MyAppArch}-Setup
-; Inno Setup creates this directory when it does not already exist.
 OutputDir=..\dist
 SolidCompression=yes
-WizardStyle=modern
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
@@ -68,8 +69,8 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 Source: "..\dist\{#MyAppSourceExe}"; DestDir: "{app}"; DestName: "{#MyAppExeName}"; Flags: ignoreversion
 
 [Icons]
-Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
+Name: "{userprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
+Name: "{userdesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\{#MyAppExeName}"; Description: "Launch {#MyAppName}"; Flags: nowait postinstall skipifsilent

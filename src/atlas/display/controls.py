@@ -23,9 +23,9 @@ LOGGER = logging.getLogger(__name__)
 # CONSTANTS
 # =============================================================================
 
-VALID_SIGNALS: Tuple[str, ...] = ("accepted", "rejected")
-SECONDS_PER_HOUR: int = 3600
-SECONDS_PER_MINUTE: int = 60
+VALID_SIGNALS = ("accepted", "rejected")
+SECONDS_PER_HOUR = 3600
+SECONDS_PER_MINUTE = 60
 
 # =============================================================================
 # ELEMENTS
@@ -110,7 +110,8 @@ def _get_button(
 ) -> Optional[QtWidgets.QAbstractButton]:
     """Retrieve a button safely by name."""
     try:
-        type_ = getattr(QtWidgets.QDialogButtonBox.StandardButton, name)
+        btn_scope = getattr(QtWidgets.QDialogButtonBox, "StandardButton", QtWidgets.QDialogButtonBox)
+        type_ = getattr(btn_scope, name)
         return button_box.button(type_)
     except (KeyError, AttributeError):
         return None

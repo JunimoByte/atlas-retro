@@ -1,43 +1,23 @@
 # Overview
 
-Atlas is a comprehensive, cross-platform utility designed to safeguard your web browsing data. It provides a simple yet powerful way to back up profiles from a vast array of web browsers.
+Atlas is a specialized, offline utility designed to safeguard your web browsing data on legacy and retro systems, specifically targeting Windows XP (NT 5.1 / 5.2) and modern operating systems alike.
 
 ## Features
-Atlas supports over **300+** different browser variants. It detects and backs up not just standard releases, but also:
-*   **Development Builds** (Dev, Beta, Nightly)
-*   **Canary Channels**
-*   **Legacy Versions** & Older Engines
+Atlas supports over **300+** different browser variants. It detects and backs up not just modern releases, but also vintage versions and retro engines:
+*   **Legacy Browsers & Retro Engines** (Vintage Internet Explorer, Firefox 2.x-52.x ESR, Pale Moon, K-Meleon, Netscape, Opera Presto)
+*   **Standard Chromium & Gecko Releases**
+*   **Development & Canary Channels**
 
 > **Disclaimer:** Due to Chromium's hardware-level encryption (DPAPI), logins must be manually exported/imported. All other data (Bookmarks, History, Settings) is fully backed up.
 
-### 🖥️ Cross-Platform Kernel & OS Compatibility
-Engineered for maximum portability across Windows, Linux, and BSD kernels:
-*   **Windows (NT Kernel)**: 7, 8, 10, 11.
-*   **Linux (Linux Kernel / glibc 2.31+)**: Build portable releases on Ubuntu 20.04 LTS for
-    the broadest practical compatibility with newer Linux desktop systems.
-*   **BSD (FreeBSD/GhostBSD Kernels)**: Native support with automated `.pkg` generation (recommended to compile on FreeBSD 13+ or GhostBSD 22+).
-
-### Linux and BSD Desktop Compatibility
-
-Atlas uses Qt's XWayland/XCB backend on Unix-like platforms, including in Wayland sessions.
-This is intentional: it provides more consistent Qt theming, window
-decorations, and behavior across the desktop environments commonly used from
-Ubuntu 20.04 LTS onward, as well as on FreeBSD-based systems.
-
-The Linux development setup checks for the required XCB libraries and asks
-before installing missing dependencies. It stops if the compatibility layer is
-unavailable, preventing a portable build that may not start on another system.
+### 🖥️ OS & Runtime Compatibility
+Engineered for reliable execution across legacy and modern platforms:
+*   **Windows XP (NT 5.1 / 5.2)**: Primary deployment target running Python 3.4.4 and PyQt4 (Qt 4.8). Uses Windows XP Win32 APIs (`SHGetFolderPathW`), legacy shell folders (`%USERPROFILE%\My Documents\Backup`), and guards against modern DWM/Vista+ APIs.
+*   **Modern Windows (Vista, 7, 8, 10, 11)**: Full compatibility supported.
+*   **Linux**: CLI and source execution supported via Python.
 
 ### 📦 Self-Contained Architecture
-Atlas packages its Python application and Qt resources into a portable
-executable. Linux build hosts must provide the XCB/XWayland libraries checked
-by `scripts/setup_dev.sh`; this keeps release builds compatible with Atlas's
-required desktop backend.
-
-For Linux distribution, `scripts/build_appimage.sh` builds an AppImage-ready
-onedir payload. It asks before downloading `appimagetool` when the tool is not
-already available. If the download is declined or unavailable, the script
-still prepares `dist/Atlas.AppDir` for manual packaging.
+Atlas packages its Python application and Qt resources into a portable single-file executable or native Inno Setup 5 installer configured for Windows XP (`MinVersion=5.1.2600`). For building on Windows XP, see [Compiling on Windows XP](compiling_on_windows_xp.md).
 
 ## Running Atlas
 
@@ -60,13 +40,16 @@ atlas --version
 
 ```
 Atlas/
-├── pyproject.toml         # Project metadata and dependencies
+├── pyproject.toml         # Project metadata and dependencies (>=3.4)
+├── main.spec              # Windows XP portable PyInstaller specification
 ├── src/                   # Source code
 │   └── atlas/             # Main package
 │       ├── main.py        # Bootstrapper router
-│       ├── gui.py         # Graphical entry point
+│       ├── gui.py         # Graphical entry point (PyQt4/5)
 │       ├── cli.py         # Headless entry point
 │       ├── args.py        # Command-line parser & version resolution
+│       ├── compatibility/ # Cross-binding Qt abstraction layer
+│       │   └── qt.py      # PyQt4/PyQt5 dual-switch & enums shim
 │       ├── lib/           # Core utilities
 │       │   ├── browsers.py
 │       │   ├── directories.py
@@ -93,7 +76,7 @@ Atlas/
 │       │   └── popup.py
 │       ├── ui/            # UI layouts
 │       │   └── interface.py
-│       └── tests/         # Test suite
+│       └── tests/         # Unit and integration test suite
 ├── assets/                # Application resources
 │   ├── icons/             # Application icons
 │   └── images/            # UI images
@@ -101,8 +84,7 @@ Atlas/
 │   ├── browsers.json
 │   ├── types.json
 │   └── blacklist.json
-├── installer/             # Packaging metadata (MSIX, AppImage, Debian, Inno Setup)
-├── scripts/               # Build and environment setup scripts
-└── docs/                  # Documentation
+├── installer/             # Inno Setup Windows XP installer (Atlas.iss)
+├── scripts/               # Environment setup scripts
+└── docs/                  # Documentation and ADRs
 ```
-

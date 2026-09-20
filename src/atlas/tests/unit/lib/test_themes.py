@@ -178,7 +178,7 @@ def test_apply_dark_calls_dwmapi(
 def test_apply_native_windows_theme_uses_qt_palette(
     monkeypatch: pytest.MonkeyPatch, mock_window: MagicMock
 ) -> None:
-    """Modern PyQt6 uses Qt's system-following colour scheme API."""
+    """Native theming applies style hints and chrome."""
     hints = MagicMock()
     monkeypatch.setattr(
         themes.QtGui.QGuiApplication, "styleHints", lambda: hints
@@ -198,25 +198,15 @@ def test_apply_native_windows_theme_uses_qt_palette(
     )
 
 
-def test_native_windows_theming_requires_pyqt6(
+def test_native_windows_theming_unsupported_on_pyqt4_and_pyqt5(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """PyQt5 always uses the compatible stylesheet fallback."""
+    """PyQt4 and PyQt5 use the compatible stylesheet and XP fallback."""
     monkeypatch.setattr(themes.ThemeDetector, "_is_windows", lambda: True)
-    monkeypatch.setattr(themes, "QT_API", "PyQt5")
-
+    monkeypatch.setattr(themes, "QT_API", "PyQt4")
     assert not themes.WindowsThemer._supports_native()
 
-
-def test_native_windows_theming_requires_windows_11(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Windows 10 retains the reliable registry and stylesheet fallback."""
-    monkeypatch.setattr(
-        themes.WindowsChromeManager, "supports", lambda _feature: False
-    )
-    monkeypatch.setattr(themes, "QT_API", "PyQt6")
-
+    monkeypatch.setattr(themes, "QT_API", "PyQt5")
     assert not themes.WindowsThemer._supports_native()
 
 

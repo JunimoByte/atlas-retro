@@ -159,7 +159,7 @@ def test_parse_args_version_long(capsys: pytest.CaptureFixture) -> None:
         args.parse_args(["--version"])
     assert exc_info.value.code == 0
     captured = capsys.readouterr()
-    expected = f"Atlas {args.VERSION}"
+    expected = "Atlas {}".format(args.VERSION)
     assert expected in captured.out or expected in captured.err
 
 
@@ -169,7 +169,7 @@ def test_parse_args_version_short(capsys: pytest.CaptureFixture) -> None:
         args.parse_args(["-v"])
     assert exc_info.value.code == 0
     captured = capsys.readouterr()
-    expected = f"Atlas {args.VERSION}"
+    expected = "Atlas {}".format(args.VERSION)
     assert expected in captured.out or expected in captured.err
 
 

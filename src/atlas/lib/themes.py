@@ -2,13 +2,10 @@
 
 Theme detection and application for Atlas.
 
-On modern PyQt6/Qt builds on Windows, Qt follows the system colour
-scheme through ``QStyleHints`` and supplies the platform palette. Older
-Qt builds, including PyQt5, retain the stylesheet fallback. Windows 11
-also receives a system-drawn Mica title-bar backdrop where supported.
-On all other platforms: theme detection is delegated to Qt style
-hints and the system palette; no stylesheets are applied, so the
-native DE theme is used as-is.
+Supported Qt bindings are PyQt4 and PyQt5. On Windows 10/11, theme
+detection follows the system registry and applies appropriate dark or
+light styles. On Windows XP, native Luna and Classic Qt widget styling
+is preserved.
 """
 
 # =============================================================================
@@ -169,8 +166,11 @@ class ThemeDetector:
     def _query_qt_hints() -> str:
         """Detect theme via Qt 6.5+ QStyleHints.colorScheme()."""
         try:
-            hints = QtGui.QGuiApplication.styleHints()
-            if not hasattr(hints, "colorScheme"):
+            gui_app = getattr(QtGui, "QGuiApplication", None)
+            if not gui_app or not hasattr(gui_app, "styleHints"):
+                return "Unknown"
+            hints = gui_app.styleHints()
+            if not hints or not hasattr(hints, "colorScheme"):
                 return "Unknown"
             scheme = hints.colorScheme()
             color_scheme = getattr(QtCore.Qt, "ColorScheme", None)
@@ -224,7 +224,10 @@ class WindowsChromeManager:
         if not ThemeDetector._is_windows():
             return None
         try:
-            return int(sys.getwindowsversion().build)
+            ver = sys.getwindowsversion()
+            if ver.major < 6:
+                return 0
+            return int(ver.build)
         except (AttributeError, TypeError, ValueError):
             return None
 
@@ -232,7 +235,14 @@ class WindowsChromeManager:
     def _set_dwm_int(window, attribute: int, value: int) -> None:
         """Set an integer DWM attribute via ctypes."""
         try:
+            ver = sys.getwindowsversion()
+            if ver.major < 6:
+                return
+
             import ctypes
+
+            if not hasattr(ctypes.windll, "dwmapi"):
+                return
 
             dwmapi = ctypes.windll.dwmapi
 
@@ -288,47 +298,40 @@ class WindowsThemer:
 
     @classmethod
     def apply(cls, window, theme: str) -> None:
-        """Apply native Windows 11 theme support or the legacy fallback."""
+        """Apply native Windows theme support or the legacy fallback."""
         try:
             dark = theme == "Dark"
             if cls._supports_native():
                 cls._apply_native(window, dark)
             else:
-                try:
-                    WindowsChromeManager.apply_chrome(window, dark)
-                except Exception:
-                    LOGGER.error(
-                        "Failed to apply Windows DWM chrome", exc_info=True
-                    )
-                window.setStyleSheet(cls._legacy_style(theme))
+                ver_major = getattr(sys.getwindowsversion(), "major", 10) if ThemeDetector._is_windows() else 10
+                if ver_major >= 6:
+                    try:
+                        WindowsChromeManager.apply_chrome(window, dark)
+                    except Exception:
+                        LOGGER.error(
+                            "Failed to apply Windows DWM chrome", exc_info=True
+                        )
+                    window.setStyleSheet(cls._legacy_style(theme))
+                else:
+                    # Windows XP: preserve native Luna/Classic Qt styling
+                    window.setStyleSheet("")
         except Exception:
             LOGGER.error("Failed to apply Windows theme", exc_info=True)
 
     @classmethod
     def _supports_native(cls) -> bool:
-        """Check if Qt runtime can follow the Windows colour scheme."""
-        if (
-            not WindowsChromeManager.supports("win11_style")
-            or QT_API != "PyQt6"
-        ):
-            return False
-        try:
-            hints = QtGui.QGuiApplication.styleHints()
-            return bool(
-                hints
-                and hasattr(hints, "setColorScheme")
-                and hasattr(QtCore.Qt, "ColorScheme")
-            )
-        except Exception:
-            LOGGER.error(
-                "Unexpected error checking native Windows support",
-                exc_info=True,
-            )
-            return False
+        """Check if Qt runtime can follow the Windows colour scheme.
+
+        PyQt4 and PyQt5 use the reliable stylesheet and native XP theme
+        fallbacks; native dynamic QStyleHints.setColorScheme was only
+        introduced in Qt 6.5+.
+        """
+        return False
 
     @classmethod
     def _apply_native(cls, window, dark: bool) -> None:
-        """Let Qt 6.8+ follow Windows natively."""
+        """Apply native Qt style and window chrome."""
         app = QtWidgets.QApplication.instance()
         if app and hasattr(app, "setStyle"):
             try:
@@ -339,7 +342,8 @@ class WindowsThemer:
             except Exception as error:
                 LOGGER.debug("Could not apply windows11 style: %s", error)
 
-        hints = QtGui.QGuiApplication.styleHints()
+        gui_app = getattr(QtGui, "QGuiApplication", None)
+        hints = gui_app.styleHints() if gui_app and hasattr(gui_app, "styleHints") else None
         if hints and hasattr(hints, "setColorScheme"):
             hints.setColorScheme(QtCore.Qt.ColorScheme.Unknown)
 
@@ -483,7 +487,8 @@ def initialize(window) -> None:
     apply(window)
 
     try:
-        hints = QtGui.QGuiApplication.styleHints()
+        gui_app = getattr(QtGui, "QGuiApplication", None)
+        hints = gui_app.styleHints() if gui_app and hasattr(gui_app, "styleHints") else None
         if hints and hasattr(hints, "colorSchemeChanged"):
 
             def _safe_apply():

@@ -26,31 +26,37 @@ LOGGER = logging.getLogger(__name__)
 # CONSTANTS
 # =============================================================================
 
+_MB = QtWidgets.QMessageBox
+
+_ICON_INFO = getattr(_MB.Icon, "Information", getattr(_MB, "Information", 1))
+_ICON_WARN = getattr(_MB.Icon, "Warning", getattr(_MB, "Warning", 2))
+_ICON_CRIT = getattr(_MB.Icon, "Critical", getattr(_MB, "Critical", 3))
+_ICON_QUES = getattr(_MB.Icon, "Question", getattr(_MB, "Question", 4))
+
+_BTN_OK = getattr(_MB.StandardButton, "Ok", getattr(_MB, "Ok", 1024))
+_BTN_CANCEL = getattr(_MB.StandardButton, "Cancel", getattr(_MB, "Cancel", 4194304))
+_BTN_YES = getattr(_MB.StandardButton, "Yes", getattr(_MB, "Yes", 16384))
+_BTN_NO = getattr(_MB.StandardButton, "No", getattr(_MB, "No", 65536))
+
 ICON_MAP = {
-    "INFORMATION": QtWidgets.QMessageBox.Icon.Information,
-    "WARNING": QtWidgets.QMessageBox.Icon.Warning,
-    "CRITICAL": QtWidgets.QMessageBox.Icon.Critical,
-    "QUESTION": QtWidgets.QMessageBox.Icon.Question,
+    "INFORMATION": _ICON_INFO,
+    "WARNING": _ICON_WARN,
+    "CRITICAL": _ICON_CRIT,
+    "QUESTION": _ICON_QUES,
 }
 
 BUTTON_MAP = {
-    "ACKNOWLEDGE": QtWidgets.QMessageBox.StandardButton.Ok,
-    "CONFIRM_DECLINE": QtWidgets.QMessageBox.StandardButton.Yes
-    | QtWidgets.QMessageBox.StandardButton.No,
-    "ACKNOWLEDGE_CANCEL": QtWidgets.QMessageBox.StandardButton.Ok
-    | QtWidgets.QMessageBox.StandardButton.Cancel,
-    "CONFIRM_DECLINE_CANCEL": (
-        QtWidgets.QMessageBox.StandardButton.Yes
-        | QtWidgets.QMessageBox.StandardButton.No
-        | QtWidgets.QMessageBox.StandardButton.Cancel
-    ),
+    "ACKNOWLEDGE": _BTN_OK,
+    "CONFIRM_DECLINE": _BTN_YES | _BTN_NO,
+    "ACKNOWLEDGE_CANCEL": _BTN_OK | _BTN_CANCEL,
+    "CONFIRM_DECLINE_CANCEL": _BTN_YES | _BTN_NO | _BTN_CANCEL,
 }
 
 DEFAULT_BUTTON = {
-    "ACKNOWLEDGE": QtWidgets.QMessageBox.StandardButton.Ok,
-    "CONFIRM_DECLINE": QtWidgets.QMessageBox.StandardButton.Yes,
-    "ACKNOWLEDGE_CANCEL": QtWidgets.QMessageBox.StandardButton.Ok,
-    "CONFIRM_DECLINE_CANCEL": QtWidgets.QMessageBox.StandardButton.Yes,
+    "ACKNOWLEDGE": _BTN_OK,
+    "CONFIRM_DECLINE": _BTN_YES,
+    "ACKNOWLEDGE_CANCEL": _BTN_OK,
+    "CONFIRM_DECLINE_CANCEL": _BTN_YES,
 }
 
 DEFAULT_STAY_ON_TOP = True
@@ -94,13 +100,13 @@ def show(
         msg.setObjectName("PopupMessageBox")
         msg.setWindowTitle(title)
         msg.setText(text)
-        msg.setIcon(ICON_MAP.get(icon, QtWidgets.QMessageBox.Icon.Information))
+        msg.setIcon(ICON_MAP.get(icon, _ICON_INFO))
         msg.setStandardButtons(
-            BUTTON_MAP.get(buttons, QtWidgets.QMessageBox.StandardButton.Ok)
+            BUTTON_MAP.get(buttons, _BTN_OK)
         )
         msg.setDefaultButton(
             DEFAULT_BUTTON.get(
-                buttons, QtWidgets.QMessageBox.StandardButton.Ok
+                buttons, _BTN_OK
             )
         )
 
@@ -126,10 +132,11 @@ def show(
         except Exception as error:
             LOGGER.debug("Theme application failed: %s", error)
 
-        return msg.exec()
+        exec_fn = getattr(msg, "exec_", None) or getattr(msg, "exec")
+        return exec_fn()
     except Exception as error:
         LOGGER.error("Failed to show popup: %s", error, exc_info=True)
-        return int(QtWidgets.QMessageBox.StandardButton.Ok)
+        return int(_BTN_OK)
 
 
 # =============================================================================
@@ -229,5 +236,5 @@ def show_question(
             informative_text=details,
             stay_on_top=False,
         )
-        == QtWidgets.QMessageBox.StandardButton.Yes
+        == _BTN_YES
     )

@@ -38,9 +38,12 @@ def mock_unix_nonroot(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.fixture
 def mock_windows_admin(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
-    """Simulate Windows admin user."""
+    """Simulate Windows admin user on modern Windows (NT 6+)."""
     monkeypatch.setattr(platform, "system", lambda: "Windows")
     monkeypatch.delattr(permissions.os, "geteuid", raising=False)
+    mock_ver = MagicMock()
+    mock_ver.major = 10
+    monkeypatch.setattr(permissions.sys, "getwindowsversion", lambda: mock_ver)
     mock_admin = MagicMock(return_value=1)
     mock_windll = MagicMock()
     mock_windll.shell32.IsUserAnAdmin = mock_admin
@@ -52,9 +55,12 @@ def mock_windows_admin(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
 
 @pytest.fixture
 def mock_windows_nonadmin(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
-    """Simulate Windows non-admin user."""
+    """Simulate Windows non-admin user on modern Windows (NT 6+)."""
     monkeypatch.setattr(platform, "system", lambda: "Windows")
     monkeypatch.delattr(permissions.os, "geteuid", raising=False)
+    mock_ver = MagicMock()
+    mock_ver.major = 10
+    monkeypatch.setattr(permissions.sys, "getwindowsversion", lambda: mock_ver)
     mock_admin = MagicMock(return_value=0)
     mock_windll = MagicMock()
     mock_windll.shell32.IsUserAnAdmin = mock_admin
@@ -99,6 +105,24 @@ def test_is_elevated_windows_nonadmin(
     """Verify detection of non-elevated privileges on Windows (non-admin)."""
     assert permissions.is_elevated() is False
     mock_windows_nonadmin.assert_called_once()
+
+
+def test_is_elevated_windows_xp(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify Windows XP (major < 6) always returns False even if admin."""
+    monkeypatch.setattr(platform, "system", lambda: "Windows")
+    monkeypatch.delattr(permissions.os, "geteuid", raising=False)
+    mock_ver = MagicMock()
+    mock_ver.major = 5
+    monkeypatch.setattr(permissions.sys, "getwindowsversion", lambda: mock_ver)
+    mock_admin = MagicMock(return_value=1)
+    mock_windll = MagicMock()
+    mock_windll.shell32.IsUserAnAdmin = mock_admin
+    monkeypatch.setattr(
+        permissions.ctypes, "windll", mock_windll, raising=False
+    )
+
+    assert permissions.is_elevated() is False
+    mock_admin.assert_not_called()
 
 
 def test_is_elevated_fails_safely(monkeypatch: pytest.MonkeyPatch) -> None:

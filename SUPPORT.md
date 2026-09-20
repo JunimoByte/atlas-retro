@@ -23,13 +23,8 @@ Thank you for using Atlas! If you encounter issues, have questions, or need guid
 ## Where to Get Help
 
 ### GitHub Issues & Discussions
-* **Bug Reports:** If you discover a bug, unexpected crash, or issue with a specific browser, please [open a GitHub Issue](https://github.com/JunimoByte/atlas/issues).
-* **Feature Requests & Ideas:** Share suggestions or discuss new browser support in [GitHub Discussions](https://github.com/JunimoByte/atlas/discussions).
+* **Bug Reports:** If you discover a bug, unexpected crash, or issue with a specific browser, please [open a GitHub Issue](https://github.com/JunimoByte/atlas-retro/issues).
+* **Feature Requests & Ideas:** Share suggestions or discuss new browser support in [GitHub Discussions](https://github.com/JunimoByte/atlas-retro/discussions).
 
 ### Security Vulnerabilities
 If you discover a security issue or vulnerability, please do **not** post it publicly. Follow the instructions in our [Security Policy](SECURITY.md) to submit a private advisory.
-
----
-
-## Microsoft Store Users
-If you installed Atlas through the Microsoft Store, all updates are delivered automatically. For technical support, bug reports, and release notes, the [GitHub Repository](https://github.com/JunimoByte/atlas) is the primary channel maintained by the developer.

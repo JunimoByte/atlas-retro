@@ -5,10 +5,10 @@ Date: 2026-02-18
 Atlas requires a graphical user interface that is professional, responsive, and visually consistent across all supported platforms without maintaining separate UI implementations.
 
 ## Decision
-I selected **PyQt**, the Python bindings for the **Qt** framework.
+I selected **PyQt** (targeting **PyQt4** / Qt 4.8 for Windows XP, with runtime shims supporting PyQt5 as a fallback).
 
 ## Rationale
-- **Maturity**: Qt is a long-established, production-proven framework with a strong focus on stability and backward compatibility.
-- **Native Look and Feel**: Qt integrates with platform-specific rendering and theming systems, allowing the application to respect system appearance settings.
-- **Comprehensive Widget Set**: Qt provides a rich collection of high-quality widgets, reducing the need for custom UI implementations.
-- **Future-Proofing**: Targeting the current long-term supported generation of the Qt framework aligns Atlas with its ongoing stability commitments.
+- **Maturity**: Qt is a long-established, production-proven framework with exceptional stability and backward compatibility.
+- **Native Look and Feel**: Qt 4 integrates seamlessly with native Windows XP visual styles (Luna and Classic) without requiring resource-intensive DWM effects.
+- **Cross-Version Architecture**: By abstracting Qt access through `atlas.compatibility.qt`, the application runs natively against PyQt4 on Windows XP while remaining compatible with PyQt5 on modern environments.
+- **Comprehensive Widget Set**: Qt provides a rich collection of high-quality widgets, eliminating custom UI overhead.

@@ -23,8 +23,8 @@ LOGGER = logging.getLogger(__name__)
 # VARIABLES
 # =============================================================================
 
-BROWSERS: Dict[str, Any] = {}
-_REQUIRED_FIELDS: Dict[str, Any] = {
+BROWSERS = {}
+_REQUIRED_FIELDS = {
     "Path": str,
     "Type": str,
     "Signature": (str, bool, list),
@@ -41,33 +41,33 @@ def _validate_entry(
     """Validate a single browser entry and return a list of errors."""
     errors = []
     if not isinstance(entry, dict):
-        return ["❌ Entry in {} ({}) is not a dict".format(browser, system)]
+        return ["[-] Entry in {} ({}) is not a dict".format(browser, system)]
     for field, ftype in _REQUIRED_FIELDS.items():
         val = entry.get(field)
         if val is None:
             errors.append(
-                "❌ Missing {} in {} ({})".format(field, browser, system)
+                "[-] Missing {} in {} ({})".format(field, browser, system)
             )
             continue
         if isinstance(val, str) and not val.strip():
             errors.append(
-                "❌ Empty {} in {} ({})".format(field, browser, system)
+                "[-] Empty {} in {} ({})".format(field, browser, system)
             )
         elif isinstance(val, list) and not val:
             errors.append(
-                "❌ Empty Signature list in {} ({})".format(browser, system)
+                "[-] Empty Signature list in {} ({})".format(browser, system)
             )
         elif isinstance(val, list) and not all(
             isinstance(s, str) and s.strip() for s in val
         ):
             errors.append(
-                "❌ Invalid list in {} of {} ({})".format(
+                "[-] Invalid list in {} of {} ({})".format(
                     field, browser, system
                 )
             )
         elif not isinstance(val, ftype):
             errors.append(
-                "❌ Wrong type for {} in {} ({})".format(
+                "[-] Wrong type for {} in {} ({})".format(
                     field, browser, system
                 )
             )
@@ -98,8 +98,8 @@ def verify_entries(  # noqa: C901
             LOGGER.error("Failed to load browsers.json or it is empty.")
             return False
 
-        cleaned: Dict[str, Any] = {}
-        errors: List[str] = []
+        cleaned = {}
+        errors = []
 
         for browser, systems in data.items():
             if (
@@ -107,13 +107,13 @@ def verify_entries(  # noqa: C901
                 or not isinstance(systems, dict)
                 or not systems
             ):
-                errors.append("❌ Invalid browser: {}".format(browser))
+                errors.append("[-] Invalid browser: {}".format(browser))
                 continue
-            clean_systems: Dict[str, Any] = {}
+            clean_systems = {}
             for system, entries in systems.items():
                 if not isinstance(entries, list) or not system.strip():
                     errors.append(
-                        "❌ Invalid system {} in {}".format(system, browser)
+                        "[-] Invalid system {} in {}".format(system, browser)
                     )
                     continue
                 clean_entries = []

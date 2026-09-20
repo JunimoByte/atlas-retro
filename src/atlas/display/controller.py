@@ -10,7 +10,7 @@ Separates execution logic from the UI.
 
 import logging
 import time
-from enum import Enum, auto
+from enum import Enum
 from typing import Optional
 
 from atlas.backup import worker as Backup  # noqa: N812
@@ -47,13 +47,13 @@ SECONDS_PER_MINUTE = 60
 class ControllerState(Enum):
     """Machine state for the controller to track workflow lifecycle."""
 
-    IDLE = auto()  # waiting for user action
-    RUNNING = auto()  # pipeline active
-    SUCCESS = auto()  # backup completed fully
-    EMPTY = auto()  # no browsers found, valid no-op
-    BLOCKED = auto()  # cannot proceed (disk full, permissions)
-    CANCELLING = auto()  # user-requested stop
-    FAILED = auto()  # crash, hang, or unhandled exception only
+    IDLE = 1  # waiting for user action
+    RUNNING = 2  # pipeline active
+    SUCCESS = 3  # backup completed fully
+    EMPTY = 4  # no browsers found, valid no-op
+    BLOCKED = 5  # cannot proceed (disk full, permissions)
+    CANCELLING = 6  # user-requested stop
+    FAILED = 7  # crash, hang, or unhandled exception only
 
 
 VALID_TRANSITIONS = {
@@ -89,17 +89,17 @@ class Controller(QtCore.QObject):
         parent: Optional[QtCore.QObject] = None,
     ) -> None:
         """Initialize the Controller."""
-        super().__init__(parent)
+        super(Controller, self).__init__(parent)
         self.signals = signals
 
-        self.worker: Optional[Backup.Worker] = None
-        self._worker_thread: Optional[QtCore.QThread] = None
+        self.worker = None
+        self._worker_thread = None
 
         self.elapsed_timer = QtCore.QTimer(self)
         self.elapsed_timer.timeout.connect(self._tick)
-        self.elapsed_start_time: float = 0.0
+        self.elapsed_start_time = 0.0
 
-        self.state: ControllerState = ControllerState.IDLE
+        self.state = ControllerState.IDLE
 
     # =========================================================================
     # PRIVATE

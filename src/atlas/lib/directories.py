@@ -31,6 +31,14 @@ LOGGER = logging.getLogger(__name__)
 
 _DOWNLOADS_SUBDIR = "Downloads"
 
+
+def _user_home() -> Path:
+    """Return user home directory in a Python 3.4-compatible manner."""
+    if hasattr(Path, "home"):
+        return Path.home()
+    return Path(os.path.expanduser("~"))
+
+
 # =============================================================================
 # FUNCTIONS
 # =============================================================================
@@ -41,22 +49,22 @@ def get_downloads_dir() -> Path:
 
     Resolve the Downloads folder using platform-specific methods
     with progressively broader fallbacks so that the result is
-    reliable even on minimal installations (e.g. Arch Linux
-    without ``xdg-user-dirs``).
+    reliable even on minimal installations.
 
     On Windows the resolution order is:
 
     1. ``SHGetKnownFolderPath`` (Vista+).
     2. ``HKCU\\...\\User Shell Folders`` registry key (XP+).
-    3. ``%USERPROFILE%\\Downloads``.
-    4. Directory adjacent to the running executable.
+    3. ``SHGetFolderPathW`` (CSIDL_PERSONAL, Windows XP My Documents \ Backup).
+    4. ``%USERPROFILE%\\Downloads``.
+    5. ``%USERPROFILE%\\Backup``.
+    6. Directory adjacent to the running executable.
 
     On macOS the path is ``~/Downloads``.
 
-    On Linux and BSD the function reads the XDG ``user-dirs.dirs``
-    config file first, then the ``XDG_DOWNLOAD_DIR`` environment
-    variable, then falls back to ``~/Downloads``, and finally to
-    the exe-adjacent directory.
+    On Linux the function reads the XDG ``user-dirs.dirs`` config file,
+    then ``XDG_DOWNLOAD_DIR``, then ``~/Downloads``, and finally the
+    exe-adjacent directory.
 
     The directory is created (with parents) if it does not
     already exist.  If creation fails on every candidate, the
@@ -77,14 +85,21 @@ def get_downloads_dir() -> Path:
 
     # Walk candidates until one can be created/used.
     for candidate in candidates:
-        resolved = candidate.resolve()
-        if _ensure_directory(resolved):
-            LOGGER.info("Resolved Downloads directory: %s", resolved)
-            return resolved
+        try:
+            resolved = Path(os.path.abspath(str(candidate)))
+            if _ensure_directory(resolved):
+                LOGGER.info("Resolved Downloads directory: %s", resolved)
+                return resolved
+        except Exception as error:
+            LOGGER.debug("Candidate %s failed: %s", candidate, error)
+            continue
 
     # Guaranteed last resort: directory next to the executable.
     fallback = _get_exe_adjacent_dir()
-    resolved = fallback.resolve()
+    try:
+        resolved = Path(os.path.abspath(str(fallback)))
+    except Exception:
+        resolved = fallback
     _ensure_directory(resolved)
     LOGGER.warning(
         "All standard download locations failed; "
@@ -116,8 +131,47 @@ def _get_windows_candidates() -> list:
     if path is not None:
         candidates.append(path)
 
+    my_docs = _shell_folder_path_csidl(0x0005)  # CSIDL_PERSONAL
+    if my_docs is not None:
+        candidates.append(my_docs / "Backup")
+        candidates.append(my_docs)
+
     candidates.append(_get_downloads_posix_fallback())
+
+    userprofile = os.environ.get("USERPROFILE")
+    if userprofile:
+        candidates.append(Path(userprofile) / "Backup")
+
     return candidates
+
+
+def _shell_folder_path_csidl(csidl: int = 0x0005) -> Optional[Path]:
+    """Call SHGetFolderPathW (standard on Windows XP and later).
+
+    Args:
+        csidl: CSIDL identifier (e.g. 0x0005 for CSIDL_PERSONAL).
+
+    Returns:
+        Optional[Path]: The directory path, or None on failure.
+    """
+    if sys.platform != "win32":
+        return None
+
+    try:
+        from ctypes import wintypes
+
+        shell32 = ctypes.windll.shell32
+        if not hasattr(shell32, "SHGetFolderPathW"):
+            return None
+
+        buf = ctypes.create_unicode_buffer(wintypes.MAX_PATH)
+        result = shell32.SHGetFolderPathW(None, csidl, None, 0, buf)
+        if result == 0 and buf.value:
+            return Path(buf.value)
+    except Exception as error:
+        LOGGER.debug("SHGetFolderPathW failed: %s", error)
+
+    return None
 
 
 def _shell_known_folder_path() -> Optional[Path]:
@@ -132,6 +186,11 @@ def _shell_known_folder_path() -> Optional[Path]:
 
     try:
         from ctypes import wintypes
+
+        shell32 = ctypes.windll.shell32
+        if not hasattr(shell32, "SHGetKnownFolderPath"):
+            LOGGER.debug("SHGetKnownFolderPath not available (legacy Windows).")
+            return None
 
         # FOLDERID_Downloads GUID
         # {374DE290-123F-4565-9164-39C4925E467B}
@@ -284,7 +343,7 @@ def _parse_xdg_user_dirs_file() -> Optional[Path]:
     """
     config_home = os.environ.get(
         "XDG_CONFIG_HOME",
-        os.path.join(Path.home(), ".config"),
+        os.path.join(str(_user_home()), ".config"),
     )
     dirs_file = Path(config_home) / "user-dirs.dirs"
 
@@ -293,7 +352,8 @@ def _parse_xdg_user_dirs_file() -> Optional[Path]:
         return None
 
     try:
-        content = dirs_file.read_text(encoding="utf-8")
+        with open(str(dirs_file), "r", encoding="utf-8") as f:
+            content = f.read()
     except (OSError, UnicodeDecodeError) as error:
         LOGGER.debug("Could not read %s: %s", dirs_file, error)
         return None
@@ -317,13 +377,13 @@ def _parse_xdg_user_dirs_file() -> Optional[Path]:
 
     # Safely expand $HOME and ${HOME}. Using replace ensures we don't depend
     # on os.environ having HOME set (which expandvars relies on).
-    home_str = str(Path.home())
+    home_str = str(_user_home())
     expanded = raw_value.replace("${HOME}", home_str).replace(
         "$HOME", home_str
     )
 
     # Safely expand other environment variables and ~ constructs
-    resolved = Path(os.path.expandvars(expanded)).expanduser()
+    resolved = Path(os.path.expandvars(os.path.expanduser(expanded)))
 
     if not resolved.is_absolute():
         LOGGER.debug(
@@ -351,7 +411,7 @@ def _read_xdg_env_var() -> Optional[Path]:
     if not value:
         return None
 
-    path = Path(value).expanduser()
+    path = Path(os.path.expanduser(value))
     if not path.is_absolute():
         LOGGER.debug(
             "Ignoring relative XDG_DOWNLOAD_DIR env: %s",
@@ -383,7 +443,7 @@ def _get_sandbox_fallback() -> Optional[Path]:
         LOGGER.debug("Flatpak sandbox detected, using XDG_DATA_HOME fallback.")
         data_home = os.environ.get(
             "XDG_DATA_HOME",
-            str(Path.home() / ".var" / "app" / flatpak_id / "data"),
+            str(_user_home() / ".var" / "app" / flatpak_id / "data"),
         )
         return Path(data_home) / _DOWNLOADS_SUBDIR
 
@@ -402,7 +462,7 @@ def _get_downloads_posix_fallback() -> Path:
         Path: ``~/Downloads`` expanded to an absolute path.
 
     """
-    return Path.home() / _DOWNLOADS_SUBDIR
+    return _user_home() / _DOWNLOADS_SUBDIR
 
 
 def _get_exe_adjacent_dir() -> Path:
@@ -437,8 +497,11 @@ def _ensure_directory(path: Path) -> bool:
             successfully, False otherwise.
 
     """
+    path_str = str(path)
+    if os.path.isdir(path_str):
+        return True
     try:
-        path.mkdir(parents=True, exist_ok=True)
+        os.makedirs(path_str, exist_ok=True)
         return True
     except OSError as error:
         LOGGER.warning(

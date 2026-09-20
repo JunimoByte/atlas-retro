@@ -1,13 +1,13 @@
 <div align="center">
   <img src="assets/icons/Icon.svg" alt="Atlas icon" width="104" height="104">
   <h1>Atlas</h1>
-  <p><strong>Reliable, offline browser-profile backups.</strong></p>
+  <p><strong>Reliable, offline browser-profile backups for Windows XP and vintage computing.</strong></p>
   <p>
-    <a href="https://github.com/JunimoByte/atlas/actions/workflows/ci.yml">
-      <img src="https://github.com/JunimoByte/atlas/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status">
-    </a>
     <a href="https://www.python.org/">
-      <img src="https://img.shields.io/badge/python-3.8%2B-3776AB?logo=python&amp;logoColor=white" alt="Python 3.8 or later">
+      <img src="https://img.shields.io/badge/python-3.4%2B-3776AB?logo=python&amp;logoColor=white" alt="Python 3.4 or later">
+    </a>
+    <a href="https://riverbankcomputing.com/software/pyqt/">
+      <img src="https://img.shields.io/badge/PyQt-4%20|%205-41CD52?logo=qt&amp;logoColor=white" alt="PyQt4 / PyQt5">
     </a>
     <a href="LICENSE">
       <img src="https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg" alt="License: AGPL-3.0-or-later">
@@ -17,22 +17,24 @@
 
 ## Information
 
-Atlas creates portable ZIP backups of browser profiles while not writing to any browser directory, ever.
+Atlas creates portable ZIP backups of browser profiles while never writing to any browser directory. Specifically tailored for retro computing and legacy workstations running Windows XP (NT 5.1/5.2) and modern systems alike, Atlas runs on Python 3.4.4 (the final official Python release for Windows XP) with PyQt4.
 
 ## Features
 
-- Supports 300+ Chromium, Gecko, and legacy browser variants.
+- Supports 300+ Chromium, Gecko, and legacy browser variants (including vintage Internet Explorer, retro Mozilla Firefox, Pale Moon, K-Meleon, and Netscape).
 - Excludes caches and temporary data, often reducing a 1 GB+ profile to about 100 MB while preserving settings, history, and bookmarks.
-- Uses a strictly read-only source model and atomically creates ZIP archives in a user-selected location.
-- Supports Windows (NT), Linux, and BSD kernel platforms (Windows 7 through 11, Linux with glibc 2.31+, and FreeBSD/GhostBSD), with native Windows portable executables, Linux AppImages, Debian packages, FreeBSD pkg packages, and Python-package installs.
-- CI builds the Linux payload and runs Atlas tests in a network-disabled container; startup networking attempts fail the build.
+- Strict read-only source model: live browser profiles are never touched, modified, or written to.
+- Atomically creates ZIP archives in user-selected locations (`My Documents\Backup`, `Downloads\Backup`, or adjacent to the executable).
+- Native Windows XP support: uses `SHGetFolderPathW` and registry lookups, guards against Vista+ API dependencies, and respects native Luna/Classic visual styles.
+- Unified GUI layer: switches strictly between PyQt4 (Qt 4.8 on Windows XP) and PyQt5, with seamless enum and execution shims.
+- Fully operational headless/CLI mode (`--cli`) for scripts, recovery consoles, or automated tasks.
 
 ## Privacy & Offline Guarantee
 
-Atlas is engineered from the ground up as an offline-first tool that respects user privacy:
+Atlas is an offline-first tool that respects user privacy:
 
 - **100% Offline:** Zero telemetry, zero analytics, zero crash reporting, and zero cloud synchronization.
-- **Physical Network Exclusion:** Standalone executable builds physically exclude standard Python and Qt networking libraries (`socket`, `ssl`, `http`, `QtNetwork`).
+- **Physical Network Exclusion:** Standalone executable builds physically exclude standard networking libraries (`socket`, `ssl`, `http`, `QtNetwork`).
 - **Read-Only Operation:** Live browser folders are opened strictly in read-only mode and are never modified, written to, or deleted.
 - **No Password Decryption:** Atlas does not decrypt DPAPI credentials, master keys, or saved browser passwords.
 - **Local Control:** All archives remain on your local drive and are completely under your ownership and control.
@@ -41,19 +43,9 @@ For full details, see the [Privacy Policy](PRIVACY.md).
 
 ## Requirements
 
-- Python 3.8+
-- PyQt6 6.0+ (PyQt5 is the fallback for Windows 7)
-- Linux builds: glibc 2.31+; Ubuntu 20.04 LTS is the preferred baseline
-- FreeBSD/GhostBSD builds require system Python and Qt packages (`py312-qt6-pyqt` etc.)
-
-For Linux or FreeBSD builds, first run:
-
-```bash
-# If using fish, switch to bash or zsh first: bash
-source scripts/setup_dev.sh
-```
-
-The setup script requires a POSIX-compliant shell (`bash` or `zsh`). It checks XCB/XWayland libraries for reliable Qt startup and automatically configures safe virtual environments matching the system Python version on BSD.
+- Python 3.4.4+ (Windows XP SP3 x86/x64 target; Python 3.4.4 is the last official XP release)
+- PyQt4 or PyQt5 (PyQt4 is the primary target on Windows XP; PyQt5 is the modern fallback)
+- Windows XP SP3, Windows Server 2003, Windows Vista, 7, 10, 11, or Linux (CLI/source)
 
 ## Install and run
 
@@ -62,12 +54,22 @@ pip install .
 atlas
 ```
 
-For purely headless terminal usage (e.g. SSH sessions, cron jobs, or safe mode) you can bypass the graphical UI entirely:
+For purely headless terminal usage (e.g. recovery console, scripts, or safe mode) you can bypass the graphical UI entirely:
 
 ```bash
 atlas --cli
 atlas --version
 ```
+
+## Compiling for Windows XP
+
+To compile a standalone, single-file portable executable (`Atlas-x86-Portable.exe`) and Inno Setup installer (`Atlas-x86-Setup.exe`) on a Windows XP machine:
+
+```cmd
+build.bat
+```
+
+For complete step-by-step prerequisite installer links (Python 3.4.4 MSI, PyQt4 binary installer, PyInstaller 3.2.1, Inno Setup 5), see the **[Windows XP Compilation Guide](docs/compiling_on_windows_xp.md)**.
 
 For development:
 
@@ -90,71 +92,21 @@ QT_QPA_PLATFORM=offscreen pytest
 
 ## Build
 
-### Windows portable executable
+### Windows XP Portable Executable
 
-```bash
+Build a standalone portable single-file binary using PyInstaller:
+
+```cmd
 pyinstaller main.spec
 ```
 
-The output is `dist/Atlas-x86_64-Portable.exe` for a 64-bit Python build or
-`dist/Atlas-x86-Portable.exe` for a 32-bit build. The Inno Setup installer
-uses the matching file automatically and installs it without `-Portable`.
+The output is:
+- `dist\Atlas-Retro-x86-Portable.exe` (32-bit Windows XP)
+- `dist\Atlas-Retro-x86_64-Portable.exe` (64-bit Windows XP / modern Windows)
 
-### Linux AppImage
+### Inno Setup Installer
 
-```bash
-bash scripts/build_appimage.sh
-```
-
-This creates `dist/Atlas-<architecture>.AppImage` from an onedir payload, avoiding PyInstaller one-file extraction at launch. If `appimagetool` is absent, the script asks before downloading it to `~/.local/bin`; declining or a failed download still leaves a ready-to-package AppDir at `dist/Atlas.AppDir`.
-
-Linux uses `assets/icons/Icon.svg` for the application and AppImage icon.
-
-### Debian/Ubuntu package
-
-```bash
-bash scripts/build_deb.sh
-```
-
-This creates an artifact such as `dist/Atlas-x86_64.deb`, matching the
-AppImage naming scheme. It reuses the same Linux onedir payload as the
-AppImage, keeps Atlas under `/opt/atlas`, and adds only the normal launcher
-and desktop-entry integration files. `dpkg-deb` is required (it is normally
-provided by the `dpkg` package).
-
-Install a built package with:
-
-```bash
-sudo apt install ./dist/Atlas-x86_64.deb
-```
-
-### FreeBSD pkg package
-
-```bash
-bash scripts/build_pkg.sh
-```
-
-This creates an artifact such as `dist/Atlas-amd64.pkg`. It extracts the same
-PyInstaller payload into a native FreeBSD package, registers the XDG
-desktop icon natively, and binds to `/usr/local/`.
-
-Install a built package with:
-
-```bash
-sudo pkg add ./dist/Atlas-amd64.pkg
-```
-
-### FreeBSD/GhostBSD portable executable
-
-If distributing a standalone portable binary, use the included installer script to bypass strict `.pkg` architecture mismatch errors across major FreeBSD releases. Package `Atlas-x86_64-Portable`, `Icon.svg`, and `scripts/install_bsd.sh` into a single zip file. Users extract it and run:
-
-```bash
-sh install_bsd.sh
-```
-
-*(Note: Do not use the `source` command to run this installer, as it replaces the current process with `sudo` and will terminate your interactive shell).*
-
-This handles dependency checks (e.g. `compat13x-amd64` for older binaries on newer operating systems) and integrates the app natively into `/usr/local/`.
+Use Inno Setup 5 (ANSI or Unicode) with `installer/Atlas.iss` to build the Windows XP native setup installer (`dist\Atlas-Retro-Setup.exe`).
 
 ## Structure
 
@@ -163,8 +115,8 @@ This handles dependency checks (e.g. `compat13x-amd64` for older binaries on new
 | `src/atlas/` | Application code and tests |
 | `configs/` | Browser definitions and backup policy |
 | `assets/` | Application images and icons |
-| `scripts/` | Setup and build scripts |
-| `installer/` | Platform packaging metadata |
+| `scripts/` | Development environment setup scripts |
+| `installer/` | Inno Setup Windows installer script (`Atlas.iss`) |
 
 ## License
 

@@ -20,33 +20,13 @@ All validation steps occur before any disk-intensive or long-running operations 
 
 ---
 
-## Platform and Kernel Compatibility
+## Platform and Runtime Compatibility
 
-Atlas supports Windows (NT), Linux (glibc 2.31+), and BSD kernels. Ubuntu 20.04 LTS is the recommended Linux
-build baseline because its older userspace maximizes compatibility with newer
-Linux desktop systems. For BSD systems, compiling on FreeBSD 13+ or GhostBSD 22+
-is recommended.
+Atlas prioritizes Windows XP (NT 5.1/5.2) as its primary vintage operating system target, powered by Python 3.4.4 and PyQt4. It also supports modern Windows (Vista through 11) and Linux for CLI/source operations.
 
-`compatibility/qt.py` uses the XWayland/XCB backend on Linux for stable
-decorations and window flags, including on tiling window managers. Users may
-explicitly select a backend with `QT_QPA_PLATFORM`.
+`compatibility/qt.py` provides a unified Qt abstraction layer that dynamically switches strictly between PyQt4 (primary Windows XP target) and PyQt5, shimming scoped enums and execution methods so that the application executes natively across toolkit generations.
 
-Before Python dependencies or PyInstaller are installed,
-`scripts/setup_dev.sh` verifies the XCB runtime libraries used for X11 fallback
-compatibility. Atlas selects XCB unless the user explicitly requests a
-different backend with `QT_QPA_PLATFORM`.
-
-`scripts/build_appimage.sh` turns the Linux onedir PyInstaller payload into
-an AppImage. Its payload is placed in `dist/Atlas.AppDir/usr/bin`, while the
-AppRun launcher, desktop entry, and icon are maintained under
-`installer/appimage/`. When `appimagetool` is missing, the build script asks
-before downloading it to the current user's local bin directory. A declined
-or failed download leaves a complete AppDir for manual packaging instead of
-blocking the build.
-
-`assets/icons/Icon.svg` is the Linux icon source of truth. It is used by the
-application window and installed as the AppDir root icon. Windows uses its
-native icon asset separately.
+On Windows XP, native Win32 APIs such as `SHGetFolderPathW` (`CSIDL_PERSONAL`, `CSIDL_PROFILE`) and registry lookups replace Vista+ APIs (`SHGetKnownFolderPath`). The theming subsystem guards against missing `dwmapi.dll` on Windows XP, ensuring the native Luna and Classic visual styles render cleanly without modern compositing dependencies.
 
 ---
 
@@ -197,26 +177,23 @@ Safely loads JSON configuration files.
 Cross-platform theming and resource loading.
 
 - **`initialize(window)`** — Full theme setup entry point: sets window icon, applies backdrop, calls `apply()`, and (Windows-only) connects `colorSchemeChanged` for live theme switching.
-- **`apply(window)`** — Detects the current theme via `_get_theme()` and dispatches to `_apply_light()` or `_apply_dark()`. Used by both `initialize()` and `popup.show()`.
-- **`_get_theme()`** — Reads `AppsUseLightTheme` from the Windows Registry. Returns `"Light"` on non-Windows or on failure.
-- **`_apply_light(window)`** — Applies a minimal light stylesheet (Windows-only).
-- **`_apply_dark(window)`** — Applies a full dark stylesheet using `dwmapi.DwmSetWindowAttribute` for title bar theming. Applies rounded button styles on Windows 11+.
-- **`_is_windows_11_or_newer()`** — Checks build number (`>= 22000`) for Windows 11 detection.
+- **`apply(window)`** — Detects the current theme via `ThemeDetector.detect()` and dispatches to `WindowsThemer.apply()`.
+- **`_get_theme()`** — Reads `AppsUseLightTheme` from the Windows Registry on Windows 10+; defaults to `"Light"` on legacy Windows (XP/Vista/7) and non-Windows systems.
+- **`WindowsThemer.apply(window, theme)`** — Applies native theme on Windows 11, dark stylesheet and DWM title bar styling on Windows 10, or preserves native Luna/Classic Qt dialog styling on Windows XP.
 - **`resource_path(filename)`** — Resolves a path under `assets/` for both dev and frozen builds.
 - **`backdrop(element)`** — Loads `images/Backdrop.png` and sets it as a scaled `QPixmap` on the given label.
-- **`icon(window)`** — Selects the platform-appropriate window icon and sets
-  it on the application window.
+- **`icon(window)`** — Selects the platform-appropriate window icon and sets it on the application window.
 
 #### `lib/directories.py`
 Cross-platform user directory resolution.
 
-- **`get_downloads_dir()`** — Resolves the current user's Downloads directory. Uses `SHGetKnownFolderPath` and registry lookup on Windows; `xdg-user-dirs` and ENV vars on Linux/BSD. Creates the directory if missing, and falls back to an executable-adjacent `output/` folder as a guaranteed last resort.
+- **`get_downloads_dir()`** — Resolves the current user's Downloads or Backup directory. Uses `SHGetKnownFolderPath` (Vista+), registry lookups, and `SHGetFolderPathW` (`CSIDL_PERSONAL` for Windows XP `My Documents\Backup`); `xdg-user-dirs` and ENV vars on Linux. Creates the directory if missing, and falls back to an executable-adjacent `output/` folder as a guaranteed last resort.
 
 #### `lib/integration.py`
 User-facing operating system integration helpers.
 
 - **`open_folder(folder_path)`** — Resolves and opens a directory in the system file manager. Falls back to `archive.get_zip_output_dir()` if no path is given. Shows a `show_warning()` popup on failure.
-- **`_open_folder_platform(folder_path)`** — Platform dispatch: `os.startfile` on Windows, `open` on macOS, `xdg-open` (via `subprocess.run` inside a background daemon thread with a clean environment) on Linux.
+- **`_open_folder_platform(folder_path)`** — Platform dispatch: `os.startfile(str(folder_path))` on Windows, `open` on macOS, `xdg-open` (via `subprocess.call` inside a background daemon thread with a clean environment) on Linux.
 
 #### `lib/permissions.py`
 Ensures the application runs without elevated privileges.

@@ -66,7 +66,7 @@ def load_json(filename: str, config_dir: str = "configs") -> Dict[str, Any]:
 
         return data
 
-    except json.JSONDecodeError:
+    except ValueError:
         LOGGER.error(
             "JSON decode error in %s",
             filename,

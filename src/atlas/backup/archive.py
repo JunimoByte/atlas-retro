@@ -11,6 +11,7 @@ Handles safe compression of browser profile directories with error handling.
 import itertools
 import logging
 import os
+import sys
 import zipfile
 from datetime import datetime
 from pathlib import Path
@@ -68,8 +69,13 @@ def get_zip_output_dir() -> Path:
     if ZIP_OUTPUT_DIR is None:
         ZIP_OUTPUT_DIR = _get_default_output_dir()
 
-    output_dir = ZIP_OUTPUT_DIR.resolve()
-    output_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        output_dir = Path(os.path.abspath(str(ZIP_OUTPUT_DIR)))
+    except Exception:
+        output_dir = ZIP_OUTPUT_DIR
+    output_dir_str = str(output_dir)
+    if not os.path.isdir(output_dir_str):
+        os.makedirs(output_dir_str, exist_ok=True)
     return output_dir
 
 
@@ -115,7 +121,7 @@ def _resolve_output_zip_path(zip_name: str) -> Path:
 
     """
     output_dir = get_zip_output_dir()
-    zip_path = (output_dir / zip_name).resolve()
+    zip_path = Path(os.path.abspath(str(output_dir / zip_name)))
 
     if not _is_within_output_dir(zip_path, output_dir):
         raise ValueError(
@@ -148,17 +154,37 @@ def _write_file_to_zip(
             it as a fatal archive failure.
 
     """
+    if cancel_callback and cancel_callback():
+        return False
+
+    # Ensure compression type matches the archive if not explicitly set
+    if (
+        zip_info.compress_type == zipfile.ZIP_STORED
+        and zip_file.compression != zipfile.ZIP_STORED
+    ):
+        zip_info.compress_type = zip_file.compression
+
     try:
-        with file_path.open("rb") as src_file:
-            with zip_file.open(zip_info, "w") as dest_file:
-                read = src_file.read
-                while True:
-                    chunk = read(CHUNK_SIZE)
-                    if not chunk:
-                        break
-                    if cancel_callback and cancel_callback():
-                        return False
-                    dest_file.write(chunk)
+        # In Python 3.6+, ZipFile.open supports mode="w" for chunked streaming.
+        # In Python 3.4 and 3.5, ZipFile.open only supports mode="r", "U", "rU",
+        # so we fall back to reading the file and using writestr.
+        if sys.version_info >= (3, 6) and hasattr(zip_file, "_open_to_write"):
+            with file_path.open("rb") as src_file:
+                with zip_file.open(zip_info, "w") as dest_file:
+                    read = src_file.read
+                    while True:
+                        chunk = read(CHUNK_SIZE)
+                        if not chunk:
+                            break
+                        if cancel_callback and cancel_callback():
+                            return False
+                        dest_file.write(chunk)
+        else:
+            with file_path.open("rb") as src_file:
+                data = src_file.read()
+            if cancel_callback and cancel_callback():
+                return False
+            zip_file.writestr(zip_info, data)
         return True
     except OSError as error:
         # If disk is full, we must abort the backup completely.
@@ -187,7 +213,10 @@ def _unique_sources(sources: Iterable[Path]) -> list:
     seen_sources = set()
 
     for source in sources:
-        resolved_source = source.resolve()
+        try:
+            resolved_source = Path(os.path.abspath(str(source)))
+        except Exception:
+            resolved_source = source
         source_key = os.path.normcase(str(resolved_source))
 
         if (
@@ -256,12 +285,10 @@ def write_zip(
 
     try:
         with zipfile.ZipFile(
-            temp_zip_path,
+            str(temp_zip_path),
             "w",
             zipfile.ZIP_DEFLATED,
             allowZip64=True,
-            strict_timestamps=False,
-            compresslevel=1,
         ) as zip_file:
             for base_path, file_path in files:
                 if cancel_callback and cancel_callback():
@@ -310,7 +337,11 @@ def write_zip(
                 "Zip creation produced an empty or missing archive"
             )
 
-        os.replace(temp_zip_path, zip_path)
+        try:
+            os.replace(str(temp_zip_path), str(zip_path))
+        except OSError:
+            safe_unlink(zip_path)
+            os.replace(str(temp_zip_path), str(zip_path))
         archive_created = True
         LOGGER.info("Zip archive created: {}".format(zip_path))
     finally:

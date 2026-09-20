@@ -88,7 +88,7 @@ class Pipeline:
 
     def __repr__(self) -> str:
         """Return a string representation of the Pipeline."""
-        return f"<Pipeline(cancelled={self._cancelled})>"
+        return "<Pipeline(cancelled={})>".format(self._cancelled)
 
     # =========================================================================
     # CANCELLATION & SIGNALS
@@ -226,22 +226,12 @@ class Pipeline:
 
     def _verify_disk_space(self, total_size: int) -> bool:
         """Validate if target disk has capacity for backup."""
-        if total_size < 0:
-            LOGGER.error(
-                "Disk space check skipped: size estimate is unreliable."
-            )
-            self._emit(
-                self.disk_space_error_callback,
-                "Unknown",
-                "Unknown",
-            )
-            return False
-
-        has_space, available_space = Size.check_disk_space(total_size)
+        check_size = max(0, total_size)
+        has_space, available_space = Size.check_disk_space(check_size)
         if not has_space:
             self._emit(
                 self.disk_space_error_callback,
-                Size.format_size(total_size),
+                Size.format_size(check_size),
                 available_space,
             )
             return False
@@ -278,11 +268,14 @@ class Pipeline:
                 now = time.monotonic()
                 if now - last_emit_time >= SIGNAL_BATCH_INTERVAL:
                     self._emit(
-                        self.scanned_callback, f"{scanned} / {total} scanned"
+                        self.scanned_callback,
+                        "{} / {} scanned".format(scanned, total),
                     )
                     last_emit_time = now
 
-        self._emit(self.scanned_callback, f"{scanned} / {total} scanned")
+        self._emit(
+            self.scanned_callback, "{} / {} scanned".format(scanned, total)
+        )
 
         if (
             not browser_matches
@@ -307,7 +300,7 @@ class Pipeline:
         processed = 0
         total_size = 0
         last_emit_time = time.monotonic()
-        path_size_cache: Dict[str, int] = {}
+        path_size_cache = {}
 
         for path_str in all_paths:
             if self.is_cancelled():
@@ -342,12 +335,13 @@ class Pipeline:
                 if now - last_emit_time >= SIGNAL_BATCH_INTERVAL:
                     self._emit(
                         self.scanned_callback,
-                        f"{processed} / {total_profiles} indexed",
+                        "{} / {} indexed".format(processed, total_profiles),
                     )
                     last_emit_time = now
 
         self._emit(
-            self.scanned_callback, f"{processed} / {total_profiles} indexed"
+            self.scanned_callback,
+            "{} / {} indexed".format(processed, total_profiles),
         )
 
         formatted_size = Size.format_size(total_size)
@@ -375,7 +369,7 @@ class Pipeline:
                 return False
 
             try:
-                zip_name = f"{browser_name}.zip"
+                zip_name = "{}.zip".format(browser_name)
                 LOGGER.info(
                     "Creating archive: %s for %d path(s)", zip_name, len(paths)
                 )

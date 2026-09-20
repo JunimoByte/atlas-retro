@@ -20,13 +20,6 @@ def normalize_os_key(os_name: str) -> str:
     """
     sys_name = os_name.strip().lower()
 
-    if (
-        sys_name == "bsd"
-        or sys_name.endswith("bsd")
-        or sys_name == "dragonfly"
-    ):
-        return "BSD"
-
     if sys_name in ("darwin", "macos", "mac"):
         return "Macos"
 

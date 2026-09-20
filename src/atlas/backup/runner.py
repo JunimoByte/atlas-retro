@@ -58,7 +58,7 @@ def run_pipeline(
         if construction failed before the run started.
 
     """
-    pipeline: Optional[Pipeline] = None
+    pipeline = None
     try:
         pipeline = Pipeline(
             progress_callback=progress_callback,

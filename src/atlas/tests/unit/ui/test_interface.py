@@ -70,9 +70,22 @@ def test_setup_ui_creates_all_elements(
     ]
 
     for attr in required_attributes:
-        assert hasattr(ui_dialog, attr), f"UiDialog missing attribute: {attr}"
+        assert hasattr(
+            ui_dialog, attr
+        ), "UiDialog missing attribute: {}".format(attr)
 
     assert ui_dialog.backdrop.objectName() == "Backdrop"
+
+
+def test_retranslate_ui_sets_texts(
+    ui_dialog: UiDialog, mock_window: QtWidgets.QWidget
+) -> None:
+    """retranslate_ui should set text on window title and all labels."""
+    ui_dialog.setup_ui(mock_window)
+    ui_dialog.retranslate_ui(mock_window)
+    assert "Atlas" in mock_window.windowTitle()
+    assert "Atlas" in ui_dialog.title.text()
+    assert "Atlas" in ui_dialog.description.text()
 
 
 # =============================================================================

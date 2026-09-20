@@ -114,7 +114,7 @@ def test_open_folder_missing_folder(
     [
         ("windows", "os.startfile"),
         ("darwin", "subprocess.call"),
-        ("linux", "subprocess.run"),
+        ("linux", "subprocess.call_thread"),
     ],
 )
 def test_open_folder_platform_calls(
@@ -128,14 +128,14 @@ def test_open_folder_platform_calls(
         if expected_call == "os.startfile":
             with patch("os.startfile", create=True) as mock_start:
                 integration._open_folder_platform(folder)
-                mock_start.assert_called_once_with(folder)
+                mock_start.assert_called_once_with(str(folder))
         elif expected_call == "subprocess.call":
             with patch("subprocess.call") as mock_sub:
                 integration._open_folder_platform(folder)
                 mock_sub.assert_called_once()
                 assert str(folder) in mock_sub.call_args[0][0]
-        else:  # subprocess.run via threading
-            with patch("subprocess.run") as mock_run:
+        else:  # subprocess.call via threading
+            with patch("subprocess.call") as mock_sub:
                 with patch("threading.Thread") as mock_thread_class:
                     # Capture the target function passed to Thread
                     mock_thread_instance = MagicMock()
@@ -152,8 +152,8 @@ def test_open_folder_platform_calls(
                     if target:
                         target()
 
-                    mock_run.assert_called_once()
-                    assert str(folder) in mock_run.call_args[0][0]
+                    mock_sub.assert_called_once()
+                    assert str(folder) in mock_sub.call_args[0][0]
 
 
 def test_open_folder_handles_exception(

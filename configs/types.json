@@ -2,25 +2,26 @@
     "Windows": {
         "APPDATA": [
             "%APPDATA%",
-            "%USERPROFILE%/Application Data"
+            "%USERPROFILE%/Application Data",
+            "C:/Documents and Settings/%USERNAME%/Application Data"
         ],
         "LOCALAPPDATA": [
             "%LOCALAPPDATA%",
-            "%USERPROFILE%/Local Settings/Application Data"
+            "%USERPROFILE%/Local Settings/Application Data",
+            "C:/Documents and Settings/%USERNAME%/Local Settings/Application Data"
         ],
         "LOCALAPPDATALOW": [
             "%USERPROFILE%/AppData/LocalLow",
             "%USERPROFILE%/Local Settings/Application Data"
         ],
-        "MSIX": [
-            "%LOCALAPPDATA%/Packages",
-            "%USERPROFILE%/Local Settings/Application Data/Packages"
-        ],
         "USERPROFILE": [
-            "%USERPROFILE%"
+            "%USERPROFILE%",
+            "C:/Documents and Settings/%USERNAME%"
         ],
         "COMMONAPPDATA": [
+            "%ALLUSERSPROFILE%/Application Data",
             "%PROGRAMDATA%",
+            "C:/Documents and Settings/All Users/Application Data",
             "C:/ProgramData"
         ],
         "LEGACY": [
@@ -30,18 +31,6 @@
         ]
     },
     "Linux": {
-        "HOME": [
-            "~",
-            "~/.config"
-        ],
-        "SNAP": [
-            "~/snap"
-        ],
-        "FLATPAK": [
-            "~/.var/app"
-        ]
-    },
-    "BSD": {
         "HOME": [
             "~",
             "~/.config"

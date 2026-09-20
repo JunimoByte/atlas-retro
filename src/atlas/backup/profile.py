@@ -39,7 +39,7 @@ except Exception:
 # VARIABLES
 # =============================================================================
 
-_PATH_CACHE: Dict = {}
+_PATH_CACHE = {}
 
 # =============================================================================
 # FUNCTIONS
@@ -63,8 +63,8 @@ def _expand_path_by_type(
     """
     os_types = PATH_TYPES.get(os_name, {})
     bases = os_types.get(path_type.upper(), [])
-    expanded: List[Path] = []
-    seen: Set[str] = set()  # Track normalised absolute paths
+    expanded = []
+    seen = set()  # Track normalised absolute paths
 
     for base in bases:
         base_path = Path(os.path.expandvars(os.path.expanduser(base)))
@@ -128,7 +128,7 @@ def _expand_wildcard(base: Path, rel_path: Path) -> List[Path]:
         return [base] if base.exists() else []
 
     first, *rest = rel_path.parts
-    matches: List[Path] = []
+    matches = []
 
     # If first segment contains wildcard
     if "*" in first or "?" in first:
@@ -185,8 +185,8 @@ def find_profile(
     os_key = normalize_os_key(operating_system)
     os_entries = browser_data.get(os_key, [])
 
-    valid_profiles: List[str] = []
-    seen_paths: Set[str] = set()
+    valid_profiles = []
+    seen_paths = set()
 
     for entry in os_entries:
         raw_path = entry.get("Path")

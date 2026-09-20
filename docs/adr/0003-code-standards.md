@@ -19,6 +19,4 @@ docstrings — public and private alike. This policy is enforced via
 - **Tooling Support**: PEP 8 and PEP 257 are natively supported by
   standard linters (`pycodestyle`, `pydocstyle`) and major IDEs with no
   extra configuration.
-- **Python 3.8 Compatibility**: All type hints use `typing` module
-  constructs (`Optional`, `List`, `Dict`, `Tuple`) rather than built-in
-  generics introduced in Python 3.9+.
+- **Python 3.4 Compatibility**: In Atlas, all code strictly respects Python 3.4 syntax and standard library limitations. Features introduced in Python 3.5+ (f-strings, PEP 526 variable type annotations `var: type = val`, `enum.auto()`, `os.scandir`) are strictly forbidden in source files and verified via automated AST test suites. All function annotations use standard `typing` module constructs (`Optional`, `List`, `Dict`, `Tuple`).

@@ -31,11 +31,11 @@ _WINDOW_FLAGS = (
     | QtCore.Qt.WindowType.WindowMinimizeButtonHint
 )
 
-_LAYOUT_MARGINS: Tuple[int, int, int, int] = (20, 10, 20, 20)
-_LAYOUT_SPACING: int = 6
-_WINDOW_MIN_SIZE: Tuple[int, int] = (407, 290)
+_LAYOUT_MARGINS = (20, 10, 20, 20)
+_LAYOUT_SPACING = 6
+_WINDOW_MIN_SIZE = (407, 290)
 
-_CONTENT_LABELS: Tuple[Tuple[str, str], ...] = (
+_CONTENT_LABELS = (
     ("description", "Description"),
     ("progress_description", "ProgressDescription"),
     ("completed_description", "CompletedDescription"),
@@ -247,52 +247,35 @@ class UiDialog:
         return label
 
     def retranslate_ui(self, main_dialog: QtWidgets.QDialog) -> None:
-        """Apply localised text to all UI elements.
+        """Apply text to all UI elements.
 
         Args:
             main_dialog: The main dialog widget whose title is also set.
 
         """
-        tr = QtCore.QCoreApplication.translate
-
-        main_dialog.setWindowTitle(tr("MainDialog", "Atlas"))
+        main_dialog.setWindowTitle("Atlas")
         self.title.setText(
-            tr(
-                "MainDialog",
-                '<span style="font-size:16pt;">Atlas</span> '
-                '<span style="font-size:11pt; vertical-align:super;">1.2'
-                "</span>",
-            )
+            '<span style="font-size:16pt;">Atlas</span> '
+            '<span style="font-size:11pt; vertical-align:super;">1.2'
+            "</span>"
         )
         self.description.setText(
-            tr(
-                "MainDialog",
-                "Atlas will automatically detect all installed web browsers "
-                "and back up your user profiles into an output directory. "
-                "Press \u201cOK\u201d to initiate the backup or "
-                "\u201cCancel\u201d to exit.",
-            )
+            "Atlas will automatically detect all installed web browsers "
+            "and back up your user profiles into an output directory. "
+            'Press "OK" to initiate the backup or '
+            '"Cancel" to exit.'
         )
         self.progress_description.setText(
-            tr(
-                "MainDialog",
-                "Backing up browser profiles. Performance may vary "
-                "depending on your system\u2019s storage device.",
-            )
+            "Backing up browser profiles. Performance may vary "
+            "depending on your system's storage device."
         )
         self.completed_description.setText(
-            tr(
-                "MainDialog",
-                "All browser profiles have been successfully backed up, "
-                "compressed, and saved to the specified output folder. "
-                "You may now close the application.",
-            )
+            "All browser profiles have been successfully backed up, "
+            "compressed, and saved to the specified output folder. "
+            "You may now close the application."
         )
         self.cancel_description.setText(
-            tr(
-                "MainDialog",
-                "The backup operation was canceled. You may now safely "
-                "close this window.",
-            )
+            "The backup operation was canceled. You may now safely "
+            "close this window."
         )
-        self.time_elapsed.setText(tr("MainDialog", "Time Elapsed: "))
+        self.time_elapsed.setText("Time Elapsed: ")

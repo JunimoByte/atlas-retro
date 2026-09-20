@@ -45,13 +45,14 @@ def run_gui(args: argparse.Namespace = None) -> int:
         )
         return 1
 
-    has_policy_setter = hasattr(
-        QtGui.QGuiApplication, "setHighDpiScaleFactorRoundingPolicy"
+    gui_app = getattr(QtGui, "QGuiApplication", None)
+    has_policy_setter = bool(
+        gui_app and hasattr(gui_app, "setHighDpiScaleFactorRoundingPolicy")
     )
     has_policy_enum = hasattr(QtCore.Qt, "HighDpiScaleFactorRoundingPolicy")
 
     if has_policy_setter and has_policy_enum:
-        QtGui.QGuiApplication.setHighDpiScaleFactorRoundingPolicy(
+        gui_app.setHighDpiScaleFactorRoundingPolicy(
             QtCore.Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
         )
 
@@ -61,4 +62,5 @@ def run_gui(args: argparse.Namespace = None) -> int:
 
     win.show()
     LOGGER.info("Atlas GUI has successfully started.")
-    return app.exec()
+    exec_fn = getattr(app, "exec_", None) or getattr(app, "exec")
+    return exec_fn()

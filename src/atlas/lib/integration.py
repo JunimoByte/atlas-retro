@@ -138,7 +138,7 @@ def _open_folder_platform(folder_path: Path) -> None:
     if system == "windows":
         start = getattr(os, "startfile", None)
         if start is not None:
-            start(folder_path)
+            start(str(folder_path))
         else:
             LOGGER.warning("os.startfile not available on this platform.")
     elif system == "darwin":
@@ -153,13 +153,9 @@ def _open_folder_platform(folder_path: Path) -> None:
 
         def _run_xdg_open() -> None:
             try:
-                # subprocess.run waits for the process to exit, preventing
-                # zombies. Running it in a daemon thread prevents blocking
-                # the GUI if xdg-open takes a moment to detach or execute.
-                subprocess.run(
+                subprocess.call(
                     ["xdg-open", str(folder_path)],
                     env=env,
-                    check=False,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
                 )

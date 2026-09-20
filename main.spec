@@ -1,77 +1,44 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-"""
-PyInstaller spec file for Atlas application.
-
-- Dynamically collects all submodules in 'backup', 'lib', 'display', and 'ui'
-  for hidden imports.
-- Includes resources and configuration files.
-- Detects which Qt binding is installed at build time and excludes the other
-  to prevent PyInstaller's 'multiple Qt bindings' error.
-- On FreeBSD/GhostBSD, automatically adds system site-packages to pathex so
-  that pkg-installed PyQt is found and bundled correctly.
-"""
+"""PyInstaller spec file for Atlas on Windows XP."""
 
 import importlib
+import inspect
+import os
 import pkgutil
-import site
 import struct
 import sys
-import sysconfig
-from typing import List
+
+# Ensure 'src' is in sys.path so submodules can be imported and discovered
+_base_dir = os.path.dirname(os.path.abspath(SPEC)) if "SPEC" in dir() else os.path.abspath(".")
+_src_dir = os.path.join(_base_dir, "src")
+if _src_dir not in sys.path:
+    sys.path.insert(0, _src_dir)
+if os.path.abspath("src") not in sys.path:
+    sys.path.insert(0, os.path.abspath("src"))
 
 from PyInstaller.building.build_main import EXE, PYZ, Analysis
-from PyInstaller.utils.hooks import collect_data_files
 
-# =============================================================================
-# BSD PATH DETECTION
-# =============================================================================
-# On FreeBSD/GhostBSD, PyQt is installed via pkg into the system Python
-# site-packages (e.g. /usr/local/lib/python3.12/site-packages), not into
-# the venv. PyInstaller needs these paths explicitly so it can find and
-# bundle the Qt extension modules alongside the application.
-
-_bsd_extra_paths: List[str] = []
-if sys.platform.startswith(
-    ("freebsd", "openbsd", "netbsd", "dragonfly")
-):
-    for _scheme in ("posix_prefix", "posix_user"):
-        _candidate = sysconfig.get_path("platlib", _scheme)
-        if _candidate and _candidate not in _bsd_extra_paths:
-            _bsd_extra_paths.append(_candidate)
-    for _sp in site.getsitepackages():
-        if _sp not in _bsd_extra_paths:
-            _bsd_extra_paths.append(_sp)
-    if _bsd_extra_paths:
-        print(
-            "main.spec: BSD detected — adding to pathex: "
-            f"{_bsd_extra_paths}"
-        )
-
-# =============================================================================
-# QT BINDING DETECTION
-# =============================================================================
-
+# Detect Qt binding (PyQt4 preferred for Windows XP, PyQt5 fallback)
 try:
-    import PyQt6.QtCore  # noqa: F401
-    _active_qt = "PyQt6"
-    _excluded_qt = "PyQt5"
+    import PyQt4.QtCore  # noqa: F401
+    _active_qt = "PyQt4"
+    _excluded_qt = ["PyQt5", "PyQt6"]
 except ImportError:
-    _active_qt = "PyQt5"
-    _excluded_qt = "PyQt6"
+    try:
+        import PyQt5.QtCore  # noqa: F401
+        _active_qt = "PyQt5"
+        _excluded_qt = ["PyQt4", "PyQt6"]
+    except ImportError:
+        raise RuntimeError("Atlas requires PyQt4 or PyQt5 to build.")
 
-print(f"main.spec: bundling {_active_qt}, excluding {_excluded_qt}")
+print("main.spec: bundling %s, excluding %s" % (_active_qt, _excluded_qt))
 
-# PyInstaller builds for the Python interpreter's bitness. This works on
-# Windows 7 with Python 3.8 as well as current Windows releases.
+# Determine architecture: x86 (32-bit, typical for XP) or x86_64
 _target_arch = "x86_64" if struct.calcsize("P") == 8 else "x86"
-_portable_name = f"Atlas-{_target_arch}-Portable"
+_portable_name = "Atlas-%s-Portable" % _target_arch
 
-print(f"main.spec: creating {_portable_name}")
-
-# =============================================================================
-# RESOURCES & CONFIGS
-# =============================================================================
+print("main.spec: creating %s" % _portable_name)
 
 datas = [
     ('assets/icons/*', 'assets/icons'),
@@ -80,40 +47,9 @@ datas = [
     ('pyproject.toml', '.'),
 ]
 
-if _active_qt == "PyQt6":
-    qt_plugin_subdirs = [
-        'Qt6/plugins/styles',
-        'Qt6/plugins/platformthemes',
-        'Qt6/plugins/platforms',
-        'Qt6/plugins/iconengines',
-        'Qt6/plugins/imageformats',
-        'Qt6/plugins/wayland-decoration-client',
-        'Qt6/plugins/xcbglintegrations',
-        'Qt6/plugins/generic',
-        'Qt6/plugins/egldeviceintegrations',
-        'Qt6/plugins/wayland-graphics-integration-client',
-    ]
-    for subdir in qt_plugin_subdirs:
-        try:
-            datas += collect_data_files('PyQt6', subdir=subdir)
-        except Exception:
-            pass
 
-# =============================================================================
-# DYNAMIC HIDDEN IMPORTS
-# =============================================================================
-
-
-def collect_submodules(package_name: str) -> List[str]:
-    """Recursively collect all submodules in a package for hiddenimports.
-
-    Args:
-        package_name (str): Dotted package name to walk.
-
-    Returns:
-        List[str]: List of fully-qualified module names.
-
-    """
+def collect_submodules(package_name):
+    """Recursively collect all submodules in a package for hiddenimports."""
     hidden = []
     try:
         package = importlib.import_module(package_name)
@@ -122,10 +58,7 @@ def collect_submodules(package_name: str) -> List[str]:
         ):
             hidden.append(modname)
     except Exception as error:
-        print(
-            f"Warning: failed to collect submodules for {package_name}: "
-            f"{error}"
-        )
+        print("Warning: failed to collect submodules for %s: %s" % (package_name, error))
     return hidden
 
 
@@ -135,10 +68,6 @@ hiddenimports = (
     + collect_submodules("atlas.display")
     + collect_submodules("atlas.ui")
 )
-
-# =============================================================================
-# EXCLUDES
-# =============================================================================
 
 _unused_qt_modules = [
     'QtWebEngineWidgets', 'QtWebEngineCore', 'QtWebKit', 'QtWebKitWidgets',
@@ -151,27 +80,22 @@ _unused_qt_modules = [
 ]
 
 _offline_module_prefixes = (
+    'PyQt4.QtNetwork', 'PyQt4.QtWebKit',
     'PyQt5.QtNetwork', 'PyQt5.QtNetworkAuth', 'PyQt5.QtWebEngine',
     'PyQt5.QtWebKit', 'PyQt5.QtWebSockets', 'PyQt5.QtBluetooth',
-    'PyQt5.QtRemoteObjects', 'PyQt5.QtWebChannel', 'PyQt6.QtNetwork',
-    'PyQt6.QtNetworkAuth', 'PyQt6.QtWebEngine', 'PyQt6.QtWebSockets',
-    'PyQt6.QtBluetooth', 'PyQt6.QtRemoteObjects', 'PyQt6.QtWebChannel',
+    'PyQt6.QtNetwork', 'PyQt6.QtNetworkAuth', 'PyQt6.QtWebEngine',
     'socket', 'ssl', 'http', 'ftplib', 'imaplib', 'poplib',
     'smtplib', 'telnetlib', 'nntplib', 'wsgiref',
 )
 
 _offline_binary_markers = (
-    'QtWebEngine', 'QtWebKit', 'QtWebSockets', 'Qt5Bluetooth',
-    'Qt6Bluetooth', 'Qt5RemoteObjects', 'Qt6RemoteObjects', 'Qt5WebChannel',
-    'Qt6WebChannel',
+    'QtWebEngine', 'QtWebKit', 'QtWebSockets', 'QtNetwork',
 )
 
 _standard_library_excludes = [
     'tkinter', 'unittest', 'pytest', 'doctest', 'distutils', 'setuptools',
+    'pkg_resources',
     'email', 'sqlite3', 'concurrent', 'http', 'xml', 'html', 'pydoc',
-    # pathlib may require urllib parsing support. urllib.request remains in
-    # the explicit excludes below, but is not enforced here because some
-    # PyInstaller/Python combinations retain it in their analysis graph.
     'socket', 'ssl', 'uuid', 'pdb', 'optparse', 'getopt',
     'fractions', 'decimal', 'statistics', 'hashlib', 'hmac', 'secrets',
     'ftplib', 'imaplib', 'poplib', 'smtplib', 'telnetlib', 'nntplib', 'cgi',
@@ -179,23 +103,21 @@ _standard_library_excludes = [
 ]
 
 excludes_list = (
-    [_excluded_qt]
+    _excluded_qt
     + [
-        f'{binding}.{module}'
-        for binding in ('PyQt5', 'PyQt6')
+        "%s.%s" % (binding, module)
+        for binding in ('PyQt4', 'PyQt5', 'PyQt6')
         for module in _unused_qt_modules
     ]
     + _standard_library_excludes
 )
 
 
-def enforce_offline_payload(analysis: Analysis) -> None:
+def enforce_offline_payload(analysis):
     """Fail the build if a blocked network-capable component is collected."""
-    # PyInstaller's graph contains excluded modules, so inspect only entries
-    # that will be placed in the shipped Python/extension payload.
     payload_paths = [entry[0] for entry in analysis.pure + analysis.binaries]
 
-    def is_blocked_module(path: str) -> bool:
+    def is_blocked_module(path):
         normalized_path = path.replace('\\', '.').replace('/', '.')
         return any(
             normalized_path == prefix
@@ -218,35 +140,55 @@ def enforce_offline_payload(analysis: Analysis) -> None:
         )
 
 
-# =============================================================================
-# ANALYSIS
-# =============================================================================
+def _safe_build(cls, *args, **kwargs):
+    """Filter kwargs to those accepted by the running PyInstaller version."""
+    try:
+        sig = inspect.signature(cls.__init__)
+        accepted = set(sig.parameters.keys())
+        has_varkw = any(
+            p.kind == inspect.Parameter.VAR_KEYWORD
+            for p in sig.parameters.values()
+        )
+        if not has_varkw:
+            kwargs = dict((k, v) for k, v in kwargs.items() if k in accepted)
+    except Exception:
+        pass
+    if cls.__name__ == 'EXE':
+        try:
+            import PyInstaller
+            ver_major = int(PyInstaller.__version__.split('.')[0])
+            if ver_major < 4:
+                py3_allowed = set([
+                    'name', 'debug', 'strip', 'upx', 'console', 'icon',
+                    'version', 'uac_admin', 'uac_uiaccess', 'runtime_tmpdir'
+                ])
+                kwargs = dict((k, v) for k, v in kwargs.items() if k in py3_allowed)
+        except Exception:
+            pass
+    return cls(*args, **kwargs)
 
-a = Analysis(
+
+a = _safe_build(
+    Analysis,
     ['src/atlas/main.py'],
-    pathex=['src'] + _bsd_extra_paths,
+    pathex=['src'],
     binaries=[],
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],
-    hooksconfig={},
     runtime_hooks=[],
     excludes=excludes_list,
     noarchive=False,
-    optimize=0,
 )
 
 enforce_offline_payload(a)
 
 pyz = PYZ(a.pure)
 
-# =============================================================================
-# EXECUTABLE
-# =============================================================================
-
 _icon = 'assets/icons/Icon.ico' if sys.platform == 'win32' else None
 
-exe = EXE(
+exe = _safe_build(
+    EXE,
     pyz,
     a.scripts,
     a.binaries,
@@ -254,16 +196,10 @@ exe = EXE(
     [],
     name=_portable_name,
     debug=False,
-    onefile=True,
     bootloader_ignore_signals=False,
+    strip=False,
     upx=False,
-    upx_exclude=[],
     runtime_tmpdir=None,
-    console=False,
-    disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
+    console=True,
     icon=_icon,
 )

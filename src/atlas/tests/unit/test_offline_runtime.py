@@ -13,7 +13,7 @@ def test_startup_does_not_attempt_network_access(
     monkeypatch: Any,
 ) -> None:
     """Fail if the normal startup path invokes Python networking APIs."""
-    attempts: List[Tuple[Tuple[Any, ...], dict]] = []
+    attempts = []
 
     def block_network(*args: Any, **kwargs: Any) -> None:
         attempts.append((args, kwargs))

@@ -38,7 +38,18 @@ def is_elevated() -> bool:
             # Unix-like systems (Linux, macOS)
             return os.geteuid() == 0
         elif platform.system().lower() == "windows":
-            # Windows systems
+            # Windows XP (NT 5.1/5.2) lacks UAC (User Account Control).
+            # Standard desktop user accounts on XP are members of the Administrators
+            # group by default and run without token filtering.
+            # Elevation checking only applies to Windows Vista and newer (NT 6.0+)
+            # where UAC separates standard user tokens from elevated tokens.
+            try:
+                if hasattr(sys, "getwindowsversion"):
+                    ver = sys.getwindowsversion()
+                    if getattr(ver, "major", 6) < 6:
+                        return False
+            except Exception:
+                pass
             return ctypes.windll.shell32.IsUserAnAdmin() != 0
         else:
             # Other or unsupported systems

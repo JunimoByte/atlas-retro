@@ -1,35 +1,28 @@
 [project]
 name = "atlas"
 version = "1.2"
-description = "Atlas is a browser profile backup application."
-requires-python = ">=3.8"
+description = "Atlas is a browser profile backup utility for Windows XP."
+requires-python = ">=3.4"
 authors = [{ name = "Michael Dorman" }]
 license = { text = "AGPL-3.0-or-later" }
 readme = "README.md"
-keywords = ["backup", "browser", "profiles"]
+keywords = ["backup", "browser", "profiles", "retro", "windows-xp"]
 
 classifiers = [
     "Programming Language :: Python :: 3",
+    "Operating System :: Microsoft :: Windows",
     "Operating System :: OS Independent"
 ]
 
 [project.optional-dependencies]
 gui = [
-    "pyinstaller>=6.0",
+    "pyinstaller>=3.2",
 ]
 
-# Pure linting/testing tools -- no Qt (installed separately by setup scripts)
-# PEP 508 environment markers let pip pick the right version automatically:
-#   Python 3.8 (Windows 7) gets the last compatible releases.
-#   Python 3.9+ (Windows 10/11) gets the latest available release.
+# Development & testing tools
 dev = [
-    "pytest>=7.0",
-    "pytest-qt>=4.0; platform_system != 'FreeBSD' and platform_system != 'OpenBSD' and platform_system != 'NetBSD' and platform_system != 'DragonFly'",
-    "black>=23.0.0",
-    "flake8>=5.0.0,<7.0.0; python_version < '3.9'",
-    "flake8>=7.0.0; python_version >= '3.9'",
-    "ruff>=0.1.0,<0.5.0; python_version < '3.9' and platform_system != 'FreeBSD' and platform_system != 'OpenBSD' and platform_system != 'NetBSD' and platform_system != 'DragonFly'",
-    "ruff>=0.5.0; python_version >= '3.9' and platform_system != 'FreeBSD' and platform_system != 'OpenBSD' and platform_system != 'NetBSD' and platform_system != 'DragonFly'",
+    "pytest>=4.6",
+    "flake8",
 ]
 
 [project.scripts]
