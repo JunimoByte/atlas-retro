@@ -24,7 +24,6 @@ LOGGER = logging.getLogger(__name__)
 # =============================================================================
 
 BROWSERS: Dict[str, Any] = {}
-_PATH_CACHE: Dict[str, List[str]] = {}
 _REQUIRED_FIELDS: Dict[str, Any] = {
     "Path": str,
     "Type": str,
@@ -54,6 +53,10 @@ def _validate_entry(
             errors.append(
                 "❌ Empty {} in {} ({})".format(field, browser, system)
             )
+        elif isinstance(val, list) and not val:
+            errors.append(
+                "❌ Empty Signature list in {} ({})".format(browser, system)
+            )
         elif isinstance(val, list) and not all(
             isinstance(s, str) and s.strip() for s in val
         ):
@@ -73,20 +76,17 @@ def _validate_entry(
 
 def verify_entries(  # noqa: C901
     browsers_json: Optional[Dict[str, Any]] = None,
-    types_json: Optional[Dict[str, Any]] = None,
 ) -> bool:
     """Load and validate browser configuration.
 
     Args:
         browsers_json (Optional[Dict[str, Any]]): Injected browser data.
-        types_json (Optional[Dict[str, Any]]): Injected types data.
 
     Returns:
         bool: True if configuration is valid and loaded, False otherwise.
 
     """
     BROWSERS.clear()
-    _PATH_CACHE.clear()
 
     try:
         data = (
@@ -137,20 +137,7 @@ def verify_entries(  # noqa: C901
 
         BROWSERS.update(cleaned)
 
-        types_data = (
-            types_json if types_json is not None else load_json("types.json")
-        )
-        for os_name, os_types in types_data.items():
-            if not isinstance(os_types, dict):
-                continue
-            for type_name, paths in os_types.items():
-                if isinstance(paths, list):
-                    _PATH_CACHE["{}.{}".format(os_name, type_name.upper())] = [
-                        str(p) for p in paths if isinstance(p, str)
-                    ]
-
         LOGGER.info("Loaded %d valid browsers.", len(BROWSERS))
-        LOGGER.info("Loaded %d path types.", len(_PATH_CACHE))
         return True
 
     except Exception as error:

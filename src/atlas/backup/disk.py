@@ -31,9 +31,8 @@ def safe_unlink(path: Path) -> None:
 
     """
     try:
-        if path.exists():
-            path.unlink()
-    except Exception as error:
+        path.unlink(missing_ok=True)
+    except OSError as error:
         LOGGER.warning("Failed to delete {}: {}".format(path, error))
 
 

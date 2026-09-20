@@ -11,9 +11,7 @@ Handles initialization, configuration verification, UI setup, and execution.
 import logging
 import sys
 
-from atlas.compatibility.qt import QtCore, QtGui, QtWidgets
-from atlas.display import window
-from atlas.lib import browsers, permissions, themes
+from atlas.args import parse_args
 
 # =============================================================================
 # LOGGING
@@ -34,40 +32,18 @@ LOGGER = logging.getLogger(__name__)
 def main() -> None:
     """Launch Atlas.
 
-    Validate permissions, check config, initialize PyQt6,
-    set up the UI with theming, and run the event loop.
-    Exit gracefully on errors.
+    Routes execution to either the CLI or GUI based on parsed arguments.
     """
-    # Permission validation
-    if permissions.is_elevated():
-        permissions.show_elevated_permissions_dialog()
+    args = parse_args()
 
-    # Configuration verification
-    if not browsers.verify_entries():
-        LOGGER.error("Failed to load browser configuration. Exiting.")
-        LOGGER.info(
-            "Please check the configuration file and restart the application."
-        )
-        return
+    if args.cli:
+        from atlas.cli import run_cli
 
-    # Application initialization
-    has_policy_setter = hasattr(
-        QtGui.QGuiApplication, "setHighDpiScaleFactorRoundingPolicy"
-    )
-    has_policy_enum = hasattr(QtCore.Qt, "HighDpiScaleFactorRoundingPolicy")
+        sys.exit(run_cli(args))
+    else:
+        from atlas.gui import run_gui
 
-    if has_policy_setter and has_policy_enum:
-        QtGui.QGuiApplication.setHighDpiScaleFactorRoundingPolicy(
-            QtCore.Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
-        )
-    app = QtWidgets.QApplication(sys.argv)
-    win = window.Window()
-    themes.initialize(win)
-
-    # Application execution
-    win.show()
-    LOGGER.info("Atlas has successfully started.")
-    sys.exit(app.exec())
+        sys.exit(run_gui(args))
 
 
 # Entry point

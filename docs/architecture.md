@@ -20,11 +20,12 @@ All validation steps occur before any disk-intensive or long-running operations 
 
 ---
 
-## Linux Desktop Compatibility
+## Platform and Kernel Compatibility
 
-Atlas supports Linux (glibc 2.31+). Ubuntu 20.04 LTS is the recommended Linux
+Atlas supports Windows (NT), Linux (glibc 2.31+), and BSD kernels. Ubuntu 20.04 LTS is the recommended Linux
 build baseline because its older userspace maximizes compatibility with newer
-Linux desktop systems.
+Linux desktop systems. For BSD systems, compiling on FreeBSD 13+ or GhostBSD 22+
+is recommended.
 
 `compatibility/qt.py` uses the XWayland/XCB backend on Linux for stable
 decorations and window flags, including on tiling window managers. Users may
@@ -77,24 +78,21 @@ Atlas follows a strict, defensive trust model:
 ## Entry Point
 
 ### `src/atlas/main.py`
-The application's main entry point. Can be run via `python -m atlas.main` or the `atlas` command installed by `pyproject.toml`.
+The barebones application bootstrapper router. Delegates argument parsing to `args.py` and cleanly routes execution to either the graphical or headless runners. Does not import Qt dependencies directly.
 
-It orchestrates the startup sequence:
+### `src/atlas/args.py`
+The command-line argument parser and version resolution module. Builds the CLI argument schema (`--cli`, `-v`/`--version`, `-h`/`--help`) and dynamically resolves the application version from the canonical `pyproject.toml` configuration to prevent hardcoded constants and avoid recursive Python imports.
 
-1. **Permission Validation**  
-   Calls `permissions.is_elevated()`. If true, calls `permissions.show_elevated_permissions_dialog()` and exits.
+### `src/atlas/gui.py`
+The graphical UI runner. Handles the startup sequence for the traditional UI:
+1. **Pre-flight Checks**: Validates root permissions (spawns warning dialog if elevated) and browser configurations.
+2. **High-DPI Setup**: Configures Qt scaling policies.
+3. **UI Initialization**: Instantiates `QApplication` and the main `Window`.
+4. **Theme Application**: Calls `themes.initialize(win)` for custom dark/light mode rendering.
+5. **Event Loop**: Starts the PyQt event loop via `app.exec()`.
 
-2. **Configuration Verification**  
-   Calls `browsers.verify_entries()`. Exits early if configuration is invalid.
-
-3. **UI Initialization**  
-   Instantiates `QApplication` and the main `Window`.
-
-4. **Theme Application**  
-   Calls `themes.initialize(win)` to set the icon, backdrop, and system theme.
-
-5. **Execution**  
-   Starts the PyQt event loop via `app.exec()`.
+### `src/atlas/cli.py`
+The headless runner. Operates without any PyQt dependencies, ensuring maximum compatibility on servers, safe mode boots, and automated scripts. Uses plain Python console streams and carriage returns for an interactive progress output without spanning the terminal.
 
 ---
 
@@ -136,7 +134,7 @@ Defines `Signals(QObject)` — the event contract between `Controller` and `Wind
 | `backup_cancelled` | — | Backup was cancelled by the user |
 | `progress` | `int, int` | Current and total archive count |
 | `estimated_size` | `str` | Formatted total profile size |
-| `scanned_entries` | `str` | Scan status text (e.g. `"42 / 250 scanned"`) |
+| `scanned_entries` | `str` | Scan status text (e.g. `"42 / 300 scanned"`) |
 | `elapsed_time` | `int` | Seconds elapsed since backup started |
 | `disk_space_error` | `str, str` | Required and available space strings |
 | `no_browsers_found` | — | No supported browsers detected |
@@ -177,10 +175,16 @@ Defines the `UiDialog` class, which constructs the graphical elements of the win
 ### Library (`src/atlas/lib`)
 Core utilities for application state, configuration, and OS integration.
 
+#### `lib/system.py`
+Centralized system identification and OS string normalization.
+
+- **`normalize_os_key(os_name)`** — Maps raw OS strings (e.g. BSD variants like 'freebsd', 'openbsd') to stable configuration keys (e.g. `'BSD'`, `'Macos'`).
+- **`get_os_key()`** — Convenience function returning the normalized key for the current system.
+
 #### `lib/browsers.py`
 Manages browser configuration loading and validation.
 
-- **`verify_entries(browsers_json, types_json)`** — Loads and validates `browsers.json`. Populates the global `BROWSERS` dict and `_PATH_CACHE`. Returns `False` if invalid or empty. Accepts optional injected data for testing.
+- **`verify_entries(browsers_json)`** — Loads and validates `browsers.json`. Populates the global `BROWSERS` dict. Returns `False` if invalid or empty. Accepts optional injected data for testing.
 - **`grab()`** — Returns a read-only `MappingProxyType` view of the cached `BROWSERS` dict.
 - **`_validate_entry(entry, browser, system)`** — Validates a single browser path entry against `_REQUIRED_FIELDS`.
 
@@ -212,7 +216,7 @@ Cross-platform user directory resolution.
 User-facing operating system integration helpers.
 
 - **`open_folder(folder_path)`** — Resolves and opens a directory in the system file manager. Falls back to `archive.get_zip_output_dir()` if no path is given. Shows a `show_warning()` popup on failure.
-- **`_open_folder_platform(folder_path)`** — Platform dispatch: `os.startfile` on Windows, `open` on macOS, `xdg-open` (via `subprocess.Popen` with a clean environment) on Linux.
+- **`_open_folder_platform(folder_path)`** — Platform dispatch: `os.startfile` on Windows, `open` on macOS, `xdg-open` (via `subprocess.run` inside a background daemon thread with a clean environment) on Linux.
 
 #### `lib/permissions.py`
 Ensures the application runs without elevated privileges.
@@ -272,7 +276,7 @@ Defines `Pipeline` — the UI-agnostic backup orchestrator. Resolves policy dire
 - **`__init__(no_browsers_found_callback, disk_space_error_callback, estimated_callback, scanned_callback, progress_callback)`** — Accepts optional callbacks for UI reporting. Loads browser data via `browsers.grab()`.
 - **`run()`** — Executes the full backup flow: `scan_profiles()` → `estimate_size()` → `check_disk_space()` → `perform_backup()`. Emits `no_browsers_found_callback` if scan returns nothing; emits `disk_space_error_callback` if space is insufficient.
 - **`scan_profiles()`** — Iterates over all browsers, calls `Profile.find_profile(browser, os_name, browsers_data)` for each. Rate-limits status callbacks using `SIGNAL_BATCH_INTERVAL` (0.5s). Returns `Dict[str, List[str]]`.
-- **`estimate_size(browser_matches)`** — Flattens unique profile paths, calls `Size.get_directory_size()` for each, accumulates total bytes. Emits formatted string via `estimated_callback`.
+- **`estimate_size(browser_matches)`** — Extracts all profile paths and caches their sizes via `Size.get_directory_size()` to avoid redundant I/O, while correctly summing duplicate paths shared across multiple browsers to match the final uncompressed output space. Emits formatted string via `estimated_callback`.
 - **`perform_backup(browser_matches)`** — Creates a ZIP per browser via `archive.compress()`. Manually triggers `gc.collect()` after each archive to free memory. Emits `progress_callback` after each.
 - **`cancel()`** / **`is_cancelled()`** — Cooperative cancellation flag checked at each pipeline stage.
 - **`_retry_operation(operation, *args, **kwargs)`** — Retries up to `MAX_RETRIES` (3) times with exponential backoff (`RETRY_DELAY * 2^attempt`). Does not retry `PermissionError` or `FileNotFoundError`.
@@ -319,7 +323,7 @@ Browser profile detection.
 #### `backup/size.py`
 Size calculation and disk space utilities.
 
-- **`get_directory_size(path_str)`** — Recursively sums file sizes, skipping blacklisted folders and symlinks. Calls `gc.collect()` every `CHUNK_SIZE` (1000) files. Enforces a `MAX_SCAN_TIME` (300s) timeout.
+- **`get_directory_size(path_str, cancel_callback)`** — Recursively sums file sizes, skipping blacklisted folders and symlinks. Supports cooperative cancellation via `InterruptedError`. Calls `gc.collect()` at the end to free stack memory. Enforces a `MAX_SCAN_TIME` (300s) timeout.
 - **`format_size(bytes_size)`** — Converts bytes to a human-readable string (B, KB, MB, GB, TB, PB). Strips trailing zeros where appropriate.
 - **`check_disk_space(estimated_size_bytes, output_path)`** — Checks if the output drive has at least `estimated_size * 1.5` bytes free. Returns `(bool, formatted_available_str)`.
 - **`create_output_dir(output_path)`** — Creates the output directory, raising on failure.

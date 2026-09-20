@@ -178,8 +178,9 @@ def _shell_known_folder_path() -> Optional[Path]:
             )
             return None
 
-        folder = Path(path_ptr.value)
+        folder_str = path_ptr.value
         ole32.CoTaskMemFree(path_ptr)
+        folder = Path(folder_str)
         return folder
 
     except Exception as error:
@@ -223,7 +224,7 @@ def _shell_folder_path_registry() -> Optional[Path]:
 
         if not path.is_absolute():
             LOGGER.debug(
-                "Registry Downloads path is relative, " "ignoring: %s",
+                "Registry Downloads path is relative, ignoring: %s",
                 path,
             )
             return None
@@ -259,6 +260,11 @@ def _get_linux_candidates() -> list:
         candidates.append(path)
 
     candidates.append(_get_downloads_posix_fallback())
+
+    sandbox_path = _get_sandbox_fallback()
+    if sandbox_path is not None:
+        candidates.append(sandbox_path)
+
     return candidates
 
 
@@ -267,8 +273,10 @@ def _parse_xdg_user_dirs_file() -> Optional[Path]:
 
     The file is typically located at
     ``$XDG_CONFIG_HOME/user-dirs.dirs`` or, when that variable
-    is unset, ``~/.config/user-dirs.dirs``.  Lines have the
-    format ``XDG_DOWNLOAD_DIR="$HOME/Downloads"``.
+    is unset, ``~/.config/user-dirs.dirs``.  Lines usually have the
+    format ``XDG_DOWNLOAD_DIR="$HOME/Downloads"``, but single quotes
+    and unquoted paths are fully supported, alongside proper POSIX
+    environment variable expansion.
 
     Returns:
         Optional[Path]: Parsed path, or None if unavailable.
@@ -290,15 +298,32 @@ def _parse_xdg_user_dirs_file() -> Optional[Path]:
         LOGGER.debug("Could not read %s: %s", dirs_file, error)
         return None
 
-    pattern = re.compile(r'^XDG_DOWNLOAD_DIR\s*=\s*"(.+)"', re.MULTILINE)
+    # Allow double quotes, single quotes, or no quotes
+    pattern = re.compile(
+        r"^XDG_DOWNLOAD_DIR\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^#\n]+))",
+        re.MULTILINE,
+    )
     match = pattern.search(content)
     if match is None:
         LOGGER.debug("XDG_DOWNLOAD_DIR not found in %s", dirs_file)
         return None
 
-    raw_value = match.group(1)
-    expanded = raw_value.replace("$HOME", str(Path.home()))
-    resolved = Path(expanded).expanduser()
+    # Get whichever capture group matched
+    raw_value = match.group(1) or match.group(2) or match.group(3)
+    if raw_value is None:
+        return None
+
+    raw_value = raw_value.strip()
+
+    # Safely expand $HOME and ${HOME}. Using replace ensures we don't depend
+    # on os.environ having HOME set (which expandvars relies on).
+    home_str = str(Path.home())
+    expanded = raw_value.replace("${HOME}", home_str).replace(
+        "$HOME", home_str
+    )
+
+    # Safely expand other environment variables and ~ constructs
+    resolved = Path(os.path.expandvars(expanded)).expanduser()
 
     if not resolved.is_absolute():
         LOGGER.debug(
@@ -339,6 +364,30 @@ def _read_xdg_env_var() -> Optional[Path]:
         path,
     )
     return path
+
+
+def _get_sandbox_fallback() -> Optional[Path]:
+    """Return a safe writable directory if running in a sandbox.
+
+    Flatpak and Snap restrict access to the host filesystem. If standard
+    XDG directories fail, returning a path inside the sandbox's writable
+    user data area prevents the app from failing completely.
+    """
+    snap_data = os.environ.get("SNAP_USER_DATA")
+    if snap_data:
+        LOGGER.debug("Snap sandbox detected, using SNAP_USER_DATA.")
+        return Path(snap_data) / _DOWNLOADS_SUBDIR
+
+    flatpak_id = os.environ.get("FLATPAK_ID")
+    if flatpak_id:
+        LOGGER.debug("Flatpak sandbox detected, using XDG_DATA_HOME fallback.")
+        data_home = os.environ.get(
+            "XDG_DATA_HOME",
+            str(Path.home() / ".var" / "app" / flatpak_id / "data"),
+        )
+        return Path(data_home) / _DOWNLOADS_SUBDIR
+
+    return None
 
 
 # =============================================================================

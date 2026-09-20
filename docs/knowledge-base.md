@@ -9,11 +9,12 @@ user-controlled output location.
 
 ## Supported Environments
 
-Atlas is intended to run on Linux (glibc 2.31+) and Windows 7 or later. The
+Atlas is intended to run across Windows (NT), Linux, and BSD kernels (Windows 7 or later, Linux with glibc 2.31+, and FreeBSD/GhostBSD). The
 supported runtime is Python 3.8 or newer. Qt is supplied by PyQt6 when
 available, with PyQt5 selected as a fallback. Ubuntu 20.04 LTS is the
 recommended Linux build baseline because it provides a broad compatibility
-foundation for newer Linux desktop systems.
+foundation for newer Linux desktop systems. For BSD systems, it is recommended
+to compile on FreeBSD 13+ or GhostBSD 22+.
 
 Linux configuration is performed before the Qt binding is imported. Atlas uses
 XWayland/XCB for stable decorations and window flags, including on tiling
@@ -31,13 +32,21 @@ backend with `QT_QPA_PLATFORM`.
 ## Startup and Application Flow
 
 The executable entry point is `atlas.main`, also exposed as the `atlas`
-console command. Startup follows this order:
+console command. The bootstrapper delegates argument parsing and version
+resolution to `atlas.args` and routes execution:
 
+**Graphical Mode (`gui.py`)**:
 1. Refuse elevated/admin execution.
 2. Load and validate browser and path-type configuration.
 3. Create `QApplication` and the main `Window`.
 4. Initialize the window theme, application icon, and backdrop.
 5. Enter the Qt event loop.
+
+**CLI Mode (`cli.py`)**:
+1. Refuse elevated/admin execution (prints warning).
+2. Load and validate browser configuration.
+3. Construct `Pipeline` with console standard output callbacks.
+4. Execute pipeline and exit.
 
 The backup operation follows a separate staged flow:
 
@@ -105,7 +114,13 @@ tests and headless code through `backup.runner.run_pipeline`.
 
 Browser definitions come from `configs/browsers.json`; path expansion types
 come from `configs/types.json`. `lib.browsers.verify_entries` validates and
-caches these files during startup, then exposes a read-only mapping.
+caches the browser list during startup, while `backup.profile` loads and caches
+the path types. Both expose their results transparently.
+
+OS keys in these configuration files (`Windows`, `Linux`, `Macos`, `BSD`) are
+agnostic. They are mapped dynamically via `lib.system.normalize_os_key` to match
+the current platform (`platform.system()`), ensuring variants like GhostBSD or
+OpenBSD resolve correctly to `BSD`.
 
 For each configured browser, `Pipeline.scan_profiles` resolves candidate
 locations for the current operating system and verifies profile signatures.
@@ -195,7 +210,10 @@ separately.
 
 | Location | Responsibility |
 | --- | --- |
-| `src/atlas/main.py` | Startup checks and Qt application launch. |
+| `src/atlas/main.py` | Bootstrapper router; delegates argument parsing and routes to GUI or CLI. |
+| `src/atlas/gui.py` | Graphical entry point (Qt application launch). |
+| `src/atlas/cli.py` | Headless entry point (CLI application launch). |
+| `src/atlas/args.py` | CLI argument parser and dynamic version resolution from `pyproject.toml`. |
 | `src/atlas/compatibility/qt.py` | Qt binding selection and Linux pre-Qt setup. |
 | `src/atlas/ui/interface.py` | Static main-dialog widgets and layout. |
 | `src/atlas/display/` | Window modes, controller, signals, controls, dialogs. |
@@ -208,6 +226,11 @@ separately.
 | `scripts/build_appimage.sh` | Consent-based AppDir and AppImage build script. |
 | `installer/debian/` | Debian package control, launcher, and desktop metadata. |
 | `scripts/build_deb.sh` | Debian package build script using the Linux onedir payload. |
+| `scripts/build_pkg.sh` | Native FreeBSD `.pkg` package build script. |
+| `scripts/install_bsd.sh` | Standalone FreeBSD/GhostBSD portable runner and installer. |
+| `installer/Atlas.iss` | Windows Inno Setup installer definition. |
+| `scripts/setup_dev.sh` | Linux/BSD developer environment configuration script. |
+| `scripts/setup_dev.bat` | Windows developer environment configuration script. |
 
 ## Testing and Headless Use
 

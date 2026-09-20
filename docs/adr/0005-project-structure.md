@@ -20,7 +20,10 @@ src/
     lib/          # shared utilities (themes, integration helpers)
     tests/        # unit test suite (mirrors package structure)
     ui/           # Qt UI definitions
-    main.py       # application entry point
+    main.py       # bootstrapper router
+    gui.py        # graphical entry point
+    cli.py        # headless entry point
+    args.py       # CLI argument parsing and version definition
 assets/           # icons and images
 configs/          # runtime configuration files
 docs/             # documentation and ADRs

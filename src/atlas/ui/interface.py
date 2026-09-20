@@ -233,7 +233,10 @@ class UiDialog:
 
         """
         font = QtGui.QFont(base_font)
-        font.setPointSizeF(font.pointSizeF() * scale)
+        if font.pointSizeF() > 0:
+            font.setPointSizeF(font.pointSizeF() * scale)
+        elif font.pixelSize() > 0:
+            font.setPixelSize(int(round(font.pixelSize() * scale)))
 
         label = QtWidgets.QLabel(parent)
         label.setFont(font)
@@ -257,7 +260,7 @@ class UiDialog:
             tr(
                 "MainDialog",
                 '<span style="font-size:16pt;">Atlas</span> '
-                '<span style="font-size:11pt; vertical-align:super;">1.1'
+                '<span style="font-size:11pt; vertical-align:super;">1.2'
                 "</span>",
             )
         )

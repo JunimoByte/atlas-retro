@@ -21,31 +21,52 @@ Atlas creates portable ZIP backups of browser profiles while not writing to any 
 
 ## Features
 
-- Supports 250+ Chromium, Gecko, and legacy browser variants.
+- Supports 300+ Chromium, Gecko, and legacy browser variants.
 - Excludes caches and temporary data, often reducing a 1 GB+ profile to about 100 MB while preserving settings, history, and bookmarks.
 - Uses a strictly read-only source model and atomically creates ZIP archives in a user-selected location.
-- Supports Windows 7 through 11, Linux (glibc 2.31+), Windows portable executables, Linux AppImage and Debian packages, and Python-package installs.
+- Supports Windows (NT), Linux, and BSD kernel platforms (Windows 7 through 11, Linux with glibc 2.31+, and FreeBSD/GhostBSD), with native Windows portable executables, Linux AppImages, Debian packages, FreeBSD pkg packages, and Python-package installs.
 - CI builds the Linux payload and runs Atlas tests in a network-disabled container; startup networking attempts fail the build.
+
+## Privacy & Offline Guarantee
+
+Atlas is engineered from the ground up as an offline-first tool that respects user privacy:
+
+- **100% Offline:** Zero telemetry, zero analytics, zero crash reporting, and zero cloud synchronization.
+- **Physical Network Exclusion:** Standalone executable builds physically exclude standard Python and Qt networking libraries (`socket`, `ssl`, `http`, `QtNetwork`).
+- **Read-Only Operation:** Live browser folders are opened strictly in read-only mode and are never modified, written to, or deleted.
+- **No Password Decryption:** Atlas does not decrypt DPAPI credentials, master keys, or saved browser passwords.
+- **Local Control:** All archives remain on your local drive and are completely under your ownership and control.
+
+For full details, see the [Privacy Policy](PRIVACY.md).
 
 ## Requirements
 
 - Python 3.8+
 - PyQt6 6.0+ (PyQt5 is the fallback for Windows 7)
 - Linux builds: glibc 2.31+; Ubuntu 20.04 LTS is the preferred baseline
+- FreeBSD/GhostBSD builds require system Python and Qt packages (`py312-qt6-pyqt` etc.)
 
-For Linux builds, first run:
+For Linux or FreeBSD builds, first run:
 
 ```bash
+# If using fish, switch to bash or zsh first: bash
 source scripts/setup_dev.sh
 ```
 
-The setup script checks XCB/XWayland libraries for reliable Qt startup and asks before installing missing dependencies.
+The setup script requires a POSIX-compliant shell (`bash` or `zsh`). It checks XCB/XWayland libraries for reliable Qt startup and automatically configures safe virtual environments matching the system Python version on BSD.
 
 ## Install and run
 
 ```bash
 pip install .
 atlas
+```
+
+For purely headless terminal usage (e.g. SSH sessions, cron jobs, or safe mode) you can bypass the graphical UI entirely:
+
+```bash
+atlas --cli
+atlas --version
 ```
 
 For development:
@@ -106,6 +127,34 @@ Install a built package with:
 ```bash
 sudo apt install ./dist/Atlas-x86_64.deb
 ```
+
+### FreeBSD pkg package
+
+```bash
+bash scripts/build_pkg.sh
+```
+
+This creates an artifact such as `dist/Atlas-amd64.pkg`. It extracts the same
+PyInstaller payload into a native FreeBSD package, registers the XDG
+desktop icon natively, and binds to `/usr/local/`.
+
+Install a built package with:
+
+```bash
+sudo pkg add ./dist/Atlas-amd64.pkg
+```
+
+### FreeBSD/GhostBSD portable executable
+
+If distributing a standalone portable binary, use the included installer script to bypass strict `.pkg` architecture mismatch errors across major FreeBSD releases. Package `Atlas-x86_64-Portable`, `Icon.svg`, and `scripts/install_bsd.sh` into a single zip file. Users extract it and run:
+
+```bash
+sh install_bsd.sh
+```
+
+*(Note: Do not use the `source` command to run this installer, as it replaces the current process with `sudo` and will terminate your interactive shell).*
+
+This handles dependency checks (e.g. `compat13x-amd64` for older binaries on newer operating systems) and integrates the app natively into `/usr/local/`.
 
 ## Structure
 
