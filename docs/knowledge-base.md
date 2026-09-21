@@ -9,7 +9,7 @@ user-controlled output location.
 
 ## Supported Environments
 
-Atlas is targeted at Windows XP (NT 5.1/5.2) setups, vintage computing
+Atlas is targeted at Windows XP (NT 5.1/5.2) setups, older computing
 workstations, and modern desktop environments. The supported baseline runtime is
 Python 3.4.4 (the final official release for Windows XP) with PyQt4 (Qt 4.8).
 PyQt5 is also supported as the modern fallback via compatibility shims.

@@ -22,7 +22,7 @@ All validation steps occur before any disk-intensive or long-running operations 
 
 ## Platform and Runtime Compatibility
 
-Atlas prioritizes Windows XP (NT 5.1/5.2) as its primary vintage operating system target, powered by Python 3.4.4 and PyQt4. It also supports modern Windows (Vista through 11) and Linux for CLI/source operations.
+Atlas prioritizes Windows XP (NT 5.1/5.2) as its primary older operating system target, powered by Python 3.4.4 and PyQt4. It also supports modern Windows (Vista through 11) and Linux for CLI/source operations.
 
 `compatibility/qt.py` provides a unified Qt abstraction layer that dynamically switches strictly between PyQt4 (primary Windows XP target) and PyQt5, shimming scoped enums and execution methods so that the application executes natively across toolkit generations.
 

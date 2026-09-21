@@ -6,8 +6,29 @@ import importlib
 import inspect
 import os
 import pkgutil
+import site
 import struct
 import sys
+import sysconfig
+
+# On FreeBSD/GhostBSD, PyQt is installed via pkg into the system site-packages
+_bsd_extra_paths = []
+if sys.platform.startswith(("freebsd", "openbsd", "netbsd", "dragonfly")):
+    for _scheme in ("posix_prefix", "posix_user"):
+        try:
+            _candidate = sysconfig.get_path("platlib", _scheme)
+            if _candidate and _candidate not in _bsd_extra_paths:
+                _bsd_extra_paths.append(_candidate)
+        except Exception:
+            pass
+    try:
+        for _sp in site.getsitepackages():
+            if _sp not in _bsd_extra_paths:
+                _bsd_extra_paths.append(_sp)
+    except Exception:
+        pass
+    if _bsd_extra_paths:
+        print("main.spec: BSD detected — adding to pathex: %s" % _bsd_extra_paths)
 
 # Ensure 'src' is in sys.path so submodules can be imported and discovered
 _base_dir = os.path.dirname(os.path.abspath(SPEC)) if "SPEC" in dir() else os.path.abspath(".")
@@ -174,7 +195,7 @@ def _safe_build(cls, *args, **kwargs):
 a = _safe_build(
     Analysis,
     ['src/atlas/main.py'],
-    pathex=['src'],
+    pathex=['src'] + _bsd_extra_paths,
     binaries=[],
     datas=datas,
     hiddenimports=hiddenimports,

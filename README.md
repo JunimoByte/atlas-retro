@@ -21,31 +21,37 @@
 
 **Atlas** creates safe, compact, and completely portable ZIP backups of browser profiles without ever modifying the source files. 
 
-Engineered specifically for retro computing, vintage workstations, and preservation hobbyists, Atlas is built from the ground up to run on **Windows XP (NT 5.1/5.2, 32-bit & 64-bit)** using **Python 3.4.4** (the final official Python release for Windows XP) and **PyQt4 / PyQt5**, as well as vintage **Linux** desktops of that era (Debian 8 Jessie, Ubuntu 14.04 Trusty, etc.).
+Engineered specifically for retro computing, older workstations, and preservation hobbyists, Atlas is built from the ground up to run on **Windows XP (NT 5.1/5.2, 32-bit & 64-bit)** using **Python 3.4.4** (the final official Python release for Windows XP) and **PyQt4 / PyQt5**, as well as older **Linux** desktops of that era (Debian 8 Jessie, Ubuntu 14.04 Trusty, etc.).
 
 ---
 
-## Supported vs. Unsupported Platforms
+## Supported Platforms & Release Packages
 
-To guarantee stability, zero bloat, and authentic compatibility with legacy hardware, platform support is strictly defined:
+To guarantee stability, lightweight performance, and authentic compatibility with legacy hardware, Atlas provides pre-compiled, ready-to-run release packages for every target platform:
 
-### Supported
-- **Windows XP (32-bit SP3 & 64-bit SP2)** and **Windows Server 2003**: The primary target. Uses native Win32 APIs (`SHGetFolderPathW`, CSIDL), bypasses UAC restrictions, and renders native Windows XP Luna (Blue, Olive, Silver) and Classic UI styles.
-- **Vintage Linux (Python 3.4 era)**: Debian 8 (Jessie), Ubuntu 14.04 (Trusty), CentOS 7, and similar X11 desktop environments with `python3-pyqt4` or `python3-pyqt5`.
-- **Modern Windows (Vista, 7, 8, 10, 11)**: Supported in backward-compatibility mode via Python 3.4+ / PyQt5.
+### Supported Operating Systems & Package Formats
 
-### What Is NOT Supported (Intentionally Removed)
-- **NO BSD / FreeBSD / GhostBSD**: Packaging and platform-specific shell hooks have been removed.
-- **NO Linux AppImage / Debian Packages (`.deb`)**: Legacy Linux runs directly from source (`python3 main.py`) or virtual environments.
-- **NO Microsoft Store / MSIX Packaging**: Modern Universal Windows Platform (UWP/MSIX) packaging is completely excluded.
-- **NO PyQt6**: PyQt6 dropped 32-bit Windows XP and Python 3.4 years ago; Atlas exclusively targets PyQt4 and PyQt5.
-- **NO Python 3.5+ Syntax**: The codebase contains zero f-strings (PEP 498), zero variable type annotations (PEP 526), and zero dependencies on modern Windows APIs like `dwmapi.dll` or `SHGetKnownFolderPath`.
+- **Windows XP & Modern Windows (32-bit & 64-bit)**:
+  - **Standalone Executables**: `Atlas-x86-Portable.exe` and `Atlas-x86_64-Portable.exe` (run immediately with zero installation or external dependencies).
+  - **Setup Installer**: `Atlas-x86-Setup.exe` built with Inno Setup 5 (native Luna / Classic integration).
+- **Linux (Older & Modern Distributions)**:
+  - **AppImage**: Standalone, self-contained `Atlas-x86_64.AppImage` and `Atlas-x86.AppImage` (runs across older distros like Debian 8 / Ubuntu 14.04 up to modern Ubuntu 24.04).
+  - **Debian / Ubuntu Package (`.deb`)**: Native package installation (`sudo apt install ./Atlas-x86_64.deb`).
+  - **Standalone Portable Binary**: Pre-built executable for lightweight environments.
+- **FreeBSD & GhostBSD**:
+  - **Portable Release Bundle**: `FreeBSD_Release.tar.gz` containing the executable, icon, and `install_bsd.sh` for desktop integration.
+  - **Native FreeBSD Package (`.pkg`)**: Native `pkg add` distribution.
+
+### Technical Architecture & Compatibility Standards
+
+- **PyQt4 & PyQt5 Frameworks**: Standardized on PyQt4 and PyQt5 for authentic native widget rendering across retro systems (Windows XP Luna, classic X11 styles) and modern desktops without modern runtime bloat.
+- **Strict Backward Compatibility**: The core codebase strictly complies with Python 3.4+ syntax (zero dependencies on Python 3.5+ f-strings, variable type annotations, or newer OS APIs), guaranteeing that the exact same application logic executes reliably across all supported platforms.
 
 ---
 
 ## Features
 
-- **300+ Supported Browsers**: Detects and backs up profiles for vintage Internet Explorer (IE 6, 7, 8), retro Mozilla Firefox, Pale Moon, K-Meleon, Netscape, Opera Presto (12.x), SeaMonkey, Chromium, and hundreds of derivatives.
+- **300+ Supported Browsers**: Detects and backs up profiles for older Internet Explorer (IE 6, 7, 8), retro Mozilla Firefox, Pale Moon, K-Meleon, Netscape, Opera Presto (12.x), SeaMonkey, Chromium, and hundreds of derivatives.
 - **De-cluttered Backups**: Automatically strips web caches, code caches, GPU caches, crash dumps, and temporary logs, shrinking 1 GB+ profiles down to a few dozen megabytes.
 - **Strict Read-Only Source Model**: Never writes to, locks, or alters the live browser profile directories during backup.
 - **Atomic ZIP Compression**: Creates safe `.zip.tmp` archives and atomically renames them upon successful completion. Compatible with Python 3.4's read-only `ZipFile.open` via native `writestr` deflate streaming.
@@ -119,35 +125,81 @@ python -m PyInstaller main.spec --clean --noconfirm
 
 ---
 
-## Vintage Linux Setup & Usage
+## Linux Installation & Packages
 
-On Debian 8 (Jessie), Ubuntu 14.04 (Trusty), or other vintage Linux distributions:
+Atlas provides pre-compiled, self-contained packages for Linux distributions (Debian, Ubuntu, CentOS, Fedora, Arch, and derivatives):
 
-1. Install Python 3 and PyQt4 or PyQt5:
+### AppImage (Recommended)
+1. Download `Atlas-x86_64.AppImage` (or `Atlas-x86.AppImage` for 32-bit).
+2. Make it executable and launch:
    ```bash
-   sudo apt-get update
-   sudo apt-get install python3 python3-pip python3-pyqt4
-   # (Or for PyQt5: sudo apt-get install python3-pyqt5)
+   chmod +x Atlas-x86_64.AppImage
+   ./Atlas-x86_64.AppImage
    ```
 
-2. Run Atlas directly from source:
-   ```bash
-   python3 main.py
-   ```
+### Debian / Ubuntu Package (.deb)
+Install directly using `apt`:
+```bash
+sudo apt install ./Atlas-x86_64.deb
+```
+This deploys Atlas to `/opt/atlas` and automatically registers desktop integration and application menu shortcuts.
 
-3. Run in headless CLI mode:
+### Building Linux Packages (Developers)
+- **Build AppImage:** `bash scripts/build_appimage.sh`
+- **Build Debian Package:** `bash scripts/build_deb.sh`
+- **Run from Source:** `python3 main.py`
+
+---
+
+## FreeBSD & GhostBSD (Packages & Portable Bundle)
+
+Atlas supports FreeBSD and GhostBSD through both native `.pkg` packages and standalone release bundles:
+
+### Portable Release Bundle
+The pre-bundled archive contains the self-contained executable, application icon, and installation helper script:
+
+```
+FreeBSD_Release/
+├── Atlas-x86_64-Portable   # (or Atlas-x86-Portable on 32-bit BSD)
+├── Icon.svg
+└── install_bsd.sh
+```
+
+1. Extract the release archive:
    ```bash
-   python3 main.py --cli
+   tar -xzf FreeBSD_Release.tar.gz
+   cd FreeBSD_Release
    ```
+2. **Run directly (portable mode):**
+   ```bash
+   ./Atlas-x86_64-Portable
+   # or on 32-bit BSD:
+   ./Atlas-x86-Portable
+   ```
+3. **Install to system (optional desktop integration):**
+   ```bash
+   sudo sh install_bsd.sh
+   ```
+   *(Installs to `/usr/local/bin/atlas`, installs desktop icons, and configures the application menu).*
+
+### Native FreeBSD Package (.pkg)
+```bash
+sudo pkg add ./Atlas-amd64.pkg
+```
+
+### Building BSD Packages from Source (Developers)
+- **Build .pkg:** `bash scripts/build_pkg.sh`
+- **Build Portable Binary:** `pyinstaller main.spec --clean --noconfirm`
+- **Run from Source:** `python3 main.py`
 
 ---
 
 ## Running Atlas
 
 ### Graphical Mode
-- **Standalone:** Double-click `Atlas-x86-Portable.exe`.
+- **Standalone:** Double-click `Atlas-x86-Portable.exe` (Windows) or execute the portable binary on Linux/BSD.
 - **From Source:** Run `python -m atlas.main` (or `python main.py`).
-- Atlas scans discovered browser profiles, estimates compressed size, and prompts you to begin backup. Archives are saved to `My Documents\Backup` (Windows XP) or `~/Downloads/Backup` (Linux).
+- Atlas scans discovered browser profiles, estimates compressed size, and prompts you to begin backup. Archives are saved to `My Documents\Backup` (Windows XP) or `~/Downloads/Backup` (Linux/BSD).
 
 ### Headless CLI Mode
 For scripts, remote shells, or system maintenance:
@@ -188,11 +240,12 @@ QT_QPA_PLATFORM=offscreen pytest
 | `src/atlas/` | Application source code and unit tests |
 | `configs/` | Browser profiles (`browsers.json`) and path rules (`types.json`) |
 | `assets/` | Icons (`Icon.ico`, `Icon.svg`) and visual assets (`Backdrop.png`) |
-| `scripts/` | `build_windows.bat` and development environment scripts |
-| `installer/` | Inno Setup 5 configuration script (`Atlas.iss`) |
-| `docs/` | Windows XP compilation guide and architecture records |
+| `scripts/` | Build scripts (`build_windows.bat`, `build_appimage.sh`, `build_deb.sh`, `build_pkg.sh`, `install_bsd.sh`) |
+| `installer/` | Packaging metadata for Inno Setup (`Atlas.iss`), AppImage, and Debian |
+| `docs/` | Architecture records and platform setup guides |
 | `main.spec` | PyInstaller standalone packaging specification |
-| `build.bat` | One-click Windows XP automated build batch script |
+| `appimage.spec` | PyInstaller specification for AppImage and Debian payloads |
+| `build.bat` | One-click Windows automated build script |
 
 ---
 

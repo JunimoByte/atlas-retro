@@ -3,8 +3,8 @@
 Atlas is a specialized, offline utility designed to safeguard your web browsing data on legacy and retro systems, specifically targeting Windows XP (NT 5.1 / 5.2) and modern operating systems alike.
 
 ## Features
-Atlas supports over **300+** different browser variants. It detects and backs up not just modern releases, but also vintage versions and retro engines:
-*   **Legacy Browsers & Retro Engines** (Vintage Internet Explorer, Firefox 2.x-52.x ESR, Pale Moon, K-Meleon, Netscape, Opera Presto)
+Atlas supports over **300+** different browser variants. It detects and backs up not just modern releases, but also older versions and retro engines:
+*   **Legacy Browsers & Retro Engines** (Older Internet Explorer, Firefox 2.x-52.x ESR, Pale Moon, K-Meleon, Netscape, Opera Presto)
 *   **Standard Chromium & Gecko Releases**
 *   **Development & Canary Channels**
 

@@ -26,6 +26,13 @@ def normalize_os_key(os_name: str) -> str:
     if sys_name in ("windows", "win32"):
         return "Windows"
 
+    if (
+        sys_name == "bsd"
+        or sys_name.endswith("bsd")
+        or sys_name == "dragonfly"
+    ):
+        return "BSD"
+
     # Windows -> Windows, Linux -> Linux
     return sys_name.capitalize()
 

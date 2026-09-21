@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Atlas dev environment setup — Linux
+# Atlas dev environment setup — Linux / BSD
 #
 #  Usage:  source scripts/setup_dev.sh   (from the project root)
 # =============================================================================

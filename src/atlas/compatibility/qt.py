@@ -64,6 +64,11 @@ _LINUX_SESSION_VARIABLES = (
 # =============================================================================
 
 
+_POSIX_DESKTOP_PLATFORMS = (
+    "linux", "freebsd", "openbsd", "netbsd", "dragonfly"
+)
+
+
 def _configure_frozen_linux_environment() -> None:
     """Suppress GIO module conflicts when running as a frozen binary.
 
@@ -80,7 +85,7 @@ def _configure_frozen_linux_environment() -> None:
     development runs are unaffected.
 
     """
-    if not sys.platform.startswith("linux"):
+    if not sys.platform.startswith(_POSIX_DESKTOP_PLATFORMS):
         return
     if not getattr(sys, "frozen", False):
         return
@@ -89,17 +94,17 @@ def _configure_frozen_linux_environment() -> None:
         os.environ.setdefault("GIO_MODULE_DIR", "")
         os.environ.setdefault("NO_AT_BRIDGE", "1")
         LOGGER.debug(
-            "Frozen Linux: GIO_MODULE_DIR and NO_AT_BRIDGE suppressed."
+            "Frozen Linux/BSD: GIO_MODULE_DIR and NO_AT_BRIDGE suppressed."
         )
     except Exception:
         LOGGER.error(
-            "Failed to configure frozen Linux environment", exc_info=True
+            "Failed to configure frozen Linux/BSD environment", exc_info=True
         )
 
 
 def _is_tiling_window_manager() -> bool:
-    """Return whether the current Linux session is a known tiling WM."""
-    if not sys.platform.startswith("linux"):
+    """Return whether the current Linux/BSD session is a known tiling WM."""
+    if not sys.platform.startswith(_POSIX_DESKTOP_PLATFORMS):
         return False
     if "SWAYSOCK" in os.environ:
         return True
@@ -117,13 +122,13 @@ def _configure_linux_environment() -> None:
     This retains working X11/XWayland support for every desktop, including
     tiling window managers. ``QT_QPA_PLATFORM`` always takes precedence.
     """
-    if not sys.platform.startswith("linux") or os.environ.get(
+    if not sys.platform.startswith(_POSIX_DESKTOP_PLATFORMS) or os.environ.get(
         "QT_QPA_PLATFORM"
     ):
         return
 
     os.environ["QT_QPA_PLATFORM"] = "xcb"
-    LOGGER.debug("QT_QPA_PLATFORM set to 'xcb' for Linux.")
+    LOGGER.debug("QT_QPA_PLATFORM set to 'xcb' for Linux/BSD.")
 
 
 _configure_frozen_linux_environment()
