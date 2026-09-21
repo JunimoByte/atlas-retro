@@ -88,8 +88,11 @@ _offline_module_prefixes = (
     'smtplib', 'telnetlib', 'nntplib', 'wsgiref',
 )
 
+# Note: On Linux, distro builds of libQtGui (e.g. Ubuntu 14.04 Qt 4.8) dynamically
+# link against libQtNetwork as an ELF DT_NEEDED dependency. Python-level network
+# bindings (PyQt4.QtNetwork, socket, ssl, http) remain strictly blocked above.
 _offline_binary_markers = (
-    'QtWebEngine', 'QtWebKit', 'QtWebSockets', 'QtNetwork',
+    'QtWebEngine', 'QtWebKit', 'QtWebSockets', 'QtBluetooth',
 )
 
 _standard_library_excludes = [
