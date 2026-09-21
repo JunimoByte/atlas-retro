@@ -1,16 +1,13 @@
 <div align="center">
   <img src="assets/icons/Icon.svg" alt="Atlas icon" width="104" height="104">
   <h1>Atlas</h1>
-  <p><strong>Reliable, offline browser-profile backups for Windows XP and vintage computing.</strong></p>
+  <p><strong>Reliable, offline browser-profile backups.</strong></p>
   <p>
+    <a href="https://github.com/JunimoByte/atlas/actions/workflows/ci.yml">
+      <img src="https://github.com/JunimoByte/atlas/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI status">
+    </a>
     <a href="https://www.python.org/">
-      <img src="https://img.shields.io/badge/python-3.4.4-3776AB?logo=python&amp;logoColor=white" alt="Python 3.4.4">
-    </a>
-    <a href="https://riverbankcomputing.com/software/pyqt/">
-      <img src="https://img.shields.io/badge/PyQt-4%20|%205-41CD52?logo=qt&amp;logoColor=white" alt="PyQt4 / PyQt5">
-    </a>
-    <a href="https://en.wikipedia.org/wiki/Windows_XP">
-      <img src="https://img.shields.io/badge/target-Windows%20XP%20|%20Vintage%20Linux-0078D7?logo=windows&amp;logoColor=white" alt="Windows XP / Vintage Linux">
+      <img src="https://img.shields.io/badge/python-3.8%2B-3776AB?logo=python&amp;logoColor=white" alt="Python 3.8 or later">
     </a>
     <a href="LICENSE">
       <img src="https://img.shields.io/badge/license-AGPL--3.0--or--later-blue.svg" alt="License: AGPL-3.0-or-later">
