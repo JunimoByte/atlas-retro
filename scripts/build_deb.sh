@@ -159,11 +159,11 @@ temporary_output="$temporary_dir/${package_name}_${version}_${architecture}.deb"
 # Build and inspect the archive before replacing an existing release file.
 # dpkg 1.19.0+ supports --root-owner-group. On older systems (Ubuntu 14.04 Trusty dpkg 1.17),
 # omit it; files created in Docker as root are already owned by root.
-dpkg_opts=()
 if dpkg-deb --help 2>&1 | grep -q -- '--root-owner-group'; then
-    dpkg_opts+=("--root-owner-group")
+    dpkg-deb --root-owner-group --build "$package_root" "$temporary_output"
+else
+    dpkg-deb --build "$package_root" "$temporary_output"
 fi
-dpkg-deb "${dpkg_opts[@]}" --build "$package_root" "$temporary_output"
 dpkg-deb --info "$temporary_output" >/dev/null
 dpkg-deb --contents "$temporary_output" >/dev/null
 mv -f -- "$temporary_output" "$output"
