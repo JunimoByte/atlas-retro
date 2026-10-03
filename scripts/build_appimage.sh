@@ -135,6 +135,7 @@ sed -i 's/\r$//' "$appdir/atlas.desktop"
 # The root icon matches Icon=atlas and is deliberately vector-first. This is
 # the icon AppImage desktop integration and .DirIcon should prefer.
 install -Dm644 "$icon_source" "$appdir/atlas.svg"
+ln -sf atlas.svg "$appdir/.DirIcon"
 
 if [[ -z "$appimagetool" ]]; then
     echo "AppDir prepared: $appdir"

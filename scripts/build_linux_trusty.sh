@@ -43,7 +43,7 @@ bash scripts/build_appimage.sh
 bash scripts/build_deb.sh
 
 echo "==> Setting permissions on build outputs..."
-chmod -R a+rX dist/
+chmod -R a+rwX dist/
 rm -rf .cache/build/PyInstaller-3.3.1 /tmp/PyInstaller-3.3.1 build
 
 echo "==> Container build completed successfully."

@@ -54,6 +54,7 @@ jobs:
 
       - name: Package AppImage on host
         run: |
+          sudo chmod -R a+rwX dist/
           ARCH=x86_64 .cache/build/appimagetool-x86_64.AppImage --appimage-extract-and-run dist/Atlas.AppDir dist/Atlas-x86_64.AppImage
 
       - name: Verify release artifacts
