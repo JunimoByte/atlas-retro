@@ -38,12 +38,12 @@ jobs:
           # Fetch PyInstaller 3.3.1 source tarball using host pip (guaranteed modern TLS)
           pip download --no-deps "pyinstaller==3.3.1" -d .cache/build/
 
-          # Download AppImageKit 13 (built on CentOS 6, runs on Ubuntu 14.04 GLIBC 2.19 and modern distros)
+          # Download official appimagetool release
           curl -fsSL -o .cache/build/appimagetool-x86_64.AppImage \
-            https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-x86_64.AppImage
+            https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
           chmod +x .cache/build/appimagetool-x86_64.AppImage
 
-      - name: Build AppImage and DEB in Ubuntu 14.04 LTS Container
+      - name: Build AppImage AppDir and DEB in Ubuntu 14.04 LTS Container
         run: |
           docker run --rm \
             -v "$PWD:/workspace" \
@@ -80,28 +80,18 @@ jobs:
               tar -xzf .cache/build/PyInstaller-3.3.1.tar.gz -C /tmp/
               (cd /tmp/PyInstaller-3.3.1 && python setup.py install)
 
-              # 4. Deploy appimagetool into PATH
-              cp .cache/build/appimagetool-x86_64.AppImage /usr/local/bin/appimagetool
-              chmod +x /usr/local/bin/appimagetool
-
-              # 5. Build AppImage & Debian package
+              # 4. Build AppDir & Debian package
               bash scripts/build_appimage.sh
               bash scripts/build_deb.sh
 
-              # 6. Set readable permissions for host runner
+              # 5. Set readable permissions for host runner
               chmod -R a+rX dist/
               rm -rf .cache/build/PyInstaller-3.3.1 /tmp/PyInstaller-3.3.1 build
             '
 
-      - name: Package AppImage on host (fallback if container lacked FUSE)
-        if: "!hashFiles('dist/Atlas-x86_64.AppImage')"
+      - name: Package AppImage on host
         run: |
-          .cache/build/appimagetool-x86_64.AppImage --appimage-extract-and-run dist/Atlas.AppDir dist/Atlas-x86_64.AppImage || \
-          (
-            curl -fsSL -o /tmp/appimagetool https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
-            chmod +x /tmp/appimagetool
-            ARCH=x86_64 /tmp/appimagetool --appimage-extract-and-run dist/Atlas.AppDir dist/Atlas-x86_64.AppImage
-          )
+          ARCH=x86_64 .cache/build/appimagetool-x86_64.AppImage --appimage-extract-and-run dist/Atlas.AppDir dist/Atlas-x86_64.AppImage
 
       - name: Verify release artifacts
         run: |

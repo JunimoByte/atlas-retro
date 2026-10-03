@@ -23,6 +23,7 @@ gui = [
 dev = [
     "pytest>=4.6",
     "flake8",
+    "ruff",
 ]
 
 [project.scripts]
