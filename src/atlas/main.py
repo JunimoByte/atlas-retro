@@ -92,7 +92,14 @@ LOGGER = logging.getLogger(__name__)
 def _show_fatal_dialog(tb_text: str) -> None:
     """Write crash log and show diagnostic message box if on Windows."""
     try:
-        temp_dir = os.environ.get("TEMP", os.environ.get("TMP", "."))
+        import tempfile
+        temp_dir = tempfile.gettempdir()
+    except Exception:
+        temp_dir = os.environ.get(
+            "TEMP", os.environ.get("TMP", os.path.expanduser("~"))
+        )
+
+    try:
         crash_log = os.path.join(temp_dir, "atlas_crash.log")
         with open(crash_log, "w", encoding="utf-8") as fh:
             fh.write(tb_text)

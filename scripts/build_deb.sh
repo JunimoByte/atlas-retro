@@ -8,12 +8,18 @@ appdir="$project_root/dist/Atlas.AppDir"
 metadata_dir="$project_root/installer/debian"
 package_name="atlas"
 icon_source="$project_root/assets/icons/Icon.svg"
+python_bin="${PYTHON:-$(command -v python3 || command -v python || true)}"
+
+if [[ -z "$python_bin" ]]; then
+    echo "Required command not found: python3 or python" >&2
+    exit 1
+fi
 
 
 debian_architecture() {
     local python_bits
 
-    python_bits="$(python -c 'import struct; print(struct.calcsize("P") * 8)')"
+    python_bits="$("$python_bin" -c 'import struct; print(struct.calcsize("P") * 8)')"
     case "$(uname -m)" in
         x86_64|amd64)
             if [[ "$python_bits" == "32" ]]; then
@@ -111,7 +117,7 @@ if [[ ! "$version" =~ ^[0-9A-Za-z.+:~_-]+$ ]]; then
 fi
 
 cd "$project_root"
-python -m PyInstaller --noconfirm --clean appimage.spec
+"$python_bin" -m PyInstaller --noconfirm --clean appimage.spec
 
 if [[ ! -x "$payload" ]]; then
     echo "Expected PyInstaller payload was not created: $payload" >&2
@@ -151,7 +157,13 @@ trap 'rm -rf -- "$temporary_dir"' EXIT
 temporary_output="$temporary_dir/${package_name}_${version}_${architecture}.deb"
 
 # Build and inspect the archive before replacing an existing release file.
-dpkg-deb --root-owner-group --build "$package_root" "$temporary_output"
+# dpkg 1.19.0+ supports --root-owner-group. On older systems (Ubuntu 14.04 Trusty dpkg 1.17),
+# omit it; files created in Docker as root are already owned by root.
+dpkg_opts=()
+if dpkg-deb --help 2>&1 | grep -q -- '--root-owner-group'; then
+    dpkg_opts+=("--root-owner-group")
+fi
+dpkg-deb "${dpkg_opts[@]}" --build "$package_root" "$temporary_output"
 dpkg-deb --info "$temporary_output" >/dev/null
 dpkg-deb --contents "$temporary_output" >/dev/null
 mv -f -- "$temporary_output" "$output"

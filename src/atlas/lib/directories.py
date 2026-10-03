@@ -100,13 +100,31 @@ def get_downloads_dir() -> Path:
         resolved = Path(os.path.abspath(str(fallback)))
     except Exception:
         resolved = fallback
-    _ensure_directory(resolved)
-    LOGGER.warning(
-        "All standard download locations failed; "
-        "using exe-adjacent directory: %s",
-        resolved,
-    )
-    return resolved
+    if _ensure_directory(resolved):
+        LOGGER.warning(
+            "All standard download locations failed; "
+            "using exe-adjacent directory: %s",
+            resolved,
+        )
+        return resolved
+
+    # Fallback if exe-adjacent directory is read-only (e.g. /usr/bin
+    # or inside an AppImage squashfs mount).
+    try:
+        import tempfile
+
+        temp_dir = Path(tempfile.gettempdir()) / "atlas_backup"
+        if _ensure_directory(temp_dir):
+            LOGGER.warning(
+                "Exe-adjacent directory is not writable; "
+                "using temp directory: %s",
+                temp_dir,
+            )
+            return temp_dir
+    except Exception:
+        pass
+
+    return _user_home()
 
 
 # =============================================================================

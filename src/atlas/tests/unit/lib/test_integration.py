@@ -230,19 +230,23 @@ def test_open_folder_platform_bsd_file_manager_fallback(
     with patch("platform.system", return_value="freebsd"):
         with patch.dict("sys.modules", {"atlas.compatibility.qt": None}):
             with patch(
-                "atlas.lib.integration._open_posix_cmd",
-                side_effect=[False, True],
-            ) as mock_cmd:
-                integration._open_folder_platform(temp_folder)
-                assert mock_cmd.call_count == 2
-                assert mock_cmd.call_args_list[0][0][0] == [
-                    "xdg-open",
-                    str(temp_folder),
-                ]
-                assert mock_cmd.call_args_list[1][0][0] == [
-                    "nautilus",
-                    str(temp_folder),
-                ]
+                "shutil.which", side_effect=lambda cmd, **kw: "/usr/bin/" + cmd
+            ):
+                with patch(
+                    "atlas.lib.integration._open_posix_cmd",
+                    side_effect=[False, True],
+                ) as mock_cmd:
+                    integration._open_folder_platform(temp_folder)
+                    assert mock_cmd.call_count == 2
+                    assert mock_cmd.call_args_list[0][0][0] == [
+                        "xdg-open",
+                        str(temp_folder),
+                    ]
+                    assert mock_cmd.call_args_list[1][0][0] == [
+                        "gio",
+                        "open",
+                        str(temp_folder),
+                    ]
 
 
 def test_open_folder_platform_posix_all_fail(temp_folder: Path) -> None:
@@ -270,6 +274,155 @@ def test_open_folder_handles_exception(
         mock_warning.assert_called_once()
         args = mock_warning.call_args[1]
         assert "Failed to Open Folder" in args["message"]
+
+
+def test_is_tiling_window_manager(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify tiling window manager detection."""
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.delenv("SWAYSOCK", raising=False)
+    monkeypatch.delenv("I3SOCK", raising=False)
+    monkeypatch.delenv("XDG_CURRENT_DESKTOP", raising=False)
+    assert integration._is_tiling_window_manager() is False
+
+    monkeypatch.setenv("SWAYSOCK", "/tmp/sway.sock")
+    assert integration._is_tiling_window_manager() is True
+
+    monkeypatch.delenv("SWAYSOCK", raising=False)
+    monkeypatch.setenv("XDG_CURRENT_DESKTOP", "i3")
+    assert integration._is_tiling_window_manager() is True
+
+
+def test_is_kde(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify KDE desktop environment detection."""
+    monkeypatch.delenv("XDG_CURRENT_DESKTOP", raising=False)
+    monkeypatch.delenv("KDE_SESSION_VERSION", raising=False)
+    monkeypatch.delenv("KDE_FULL_SESSION", raising=False)
+    assert integration._is_kde() is False
+
+    monkeypatch.setenv("XDG_CURRENT_DESKTOP", "KDE")
+    assert integration._is_kde() is True
+
+    monkeypatch.delenv("XDG_CURRENT_DESKTOP", raising=False)
+    monkeypatch.setenv("KDE_SESSION_VERSION", "5")
+    assert integration._is_kde() is True
+
+
+def test_is_mate(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify MATE desktop environment detection."""
+    monkeypatch.delenv("XDG_CURRENT_DESKTOP", raising=False)
+    monkeypatch.delenv("MATE_DESKTOP_SESSION_ID", raising=False)
+    assert integration._is_mate() is False
+
+    monkeypatch.setenv("XDG_CURRENT_DESKTOP", "MATE")
+    assert integration._is_mate() is True
+
+
+def test_is_xfce(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verify XFCE desktop environment detection."""
+    monkeypatch.delenv("XDG_CURRENT_DESKTOP", raising=False)
+    assert integration._is_xfce() is False
+
+    monkeypatch.setenv("XDG_CURRENT_DESKTOP", "XFCE")
+    assert integration._is_xfce() is True
+
+
+def test_get_clean_desktop_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify LD_LIBRARY_PATH_ORIG restoration and Qt env clearing."""
+    monkeypatch.setenv("LD_LIBRARY_PATH_ORIG", "/usr/lib/host")
+    monkeypatch.setenv("LD_LIBRARY_PATH", "/tmp/appimage/lib")
+    monkeypatch.setenv("QT_PLUGIN_PATH", "/tmp/qt/plugins")
+    monkeypatch.setenv("QT_QPA_PLATFORM", "offscreen")
+    monkeypatch.setenv("GIO_MODULE_DIR", "/tmp/gio")
+    monkeypatch.setenv("PYTHONPATH", "/tmp/venv")
+
+    clean = integration._get_clean_desktop_environment()
+    assert clean["LD_LIBRARY_PATH"] == "/usr/lib/host"
+    assert "LD_LIBRARY_PATH_ORIG" not in clean
+    assert "QT_PLUGIN_PATH" not in clean
+    assert "QT_QPA_PLATFORM" not in clean
+    assert "GIO_MODULE_DIR" not in clean
+    assert "PYTHONPATH" not in clean
+
+
+def test_get_linux_file_manager_candidates_kde(
+    temp_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify KDE candidates order."""
+    monkeypatch.setenv("XDG_CURRENT_DESKTOP", "KDE")
+    candidates = integration._get_linux_file_manager_candidates(temp_folder)
+    commands = [cmd[0] for cmd in candidates]
+    assert commands[0] == "xdg-open"
+    assert "dolphin" in commands
+    assert "kde-open" in commands
+    assert "kioclient" in commands
+
+
+def test_get_linux_file_manager_candidates_mate(
+    temp_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify MATE (GhostBSD) candidates order prioritizes caja."""
+    monkeypatch.setenv("XDG_CURRENT_DESKTOP", "MATE")
+    candidates = integration._get_linux_file_manager_candidates(temp_folder)
+    commands = [cmd[0] for cmd in candidates]
+    assert commands[0] == "xdg-open"
+    assert commands[1] == "caja"
+    assert "mate-open" in commands
+
+
+def test_get_linux_file_manager_candidates_general(
+    temp_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify general candidates order includes retro and common tools."""
+    monkeypatch.delenv("XDG_CURRENT_DESKTOP", raising=False)
+    monkeypatch.delenv("KDE_SESSION_VERSION", raising=False)
+    monkeypatch.delenv("MATE_DESKTOP_SESSION_ID", raising=False)
+    candidates = integration._get_linux_file_manager_candidates(temp_folder)
+    commands = [cmd[0] for cmd in candidates]
+    assert "xdg-open" in commands
+    assert "gio" in commands
+    assert "gvfs-open" in commands
+    assert "nautilus" in commands
+    assert "thunar" in commands
+    assert "pcmanfm" in commands
+    assert "caja" in commands
+    assert "xfe" in commands
+
+
+def test_run_linux_open_success(temp_folder: Path) -> None:
+    """Verify _run_linux_open returns True when an opener succeeds."""
+    with patch(
+        "atlas.lib.integration._open_posix_cmd", return_value=True
+    ) as mock_cmd:
+        assert integration._run_linux_open(temp_folder) is True
+        mock_cmd.assert_called_once()
+
+
+def test_open_folder_platform_mate_caja_fallback(
+    temp_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify MATE (GhostBSD) prioritizes caja if xdg-open fails."""
+    monkeypatch.setenv("XDG_CURRENT_DESKTOP", "MATE")
+    with patch("platform.system", return_value="freebsd"):
+        with patch.dict("sys.modules", {"atlas.compatibility.qt": None}):
+            with patch(
+                "shutil.which", side_effect=lambda cmd, **kw: "/usr/bin/" + cmd
+            ):
+                with patch(
+                    "atlas.lib.integration._open_posix_cmd",
+                    side_effect=[False, True],
+                ) as mock_cmd:
+                    integration._open_folder_platform(temp_folder)
+                    assert mock_cmd.call_count == 2
+                    assert mock_cmd.call_args_list[0][0][0] == [
+                        "xdg-open",
+                        str(temp_folder),
+                    ]
+                    assert mock_cmd.call_args_list[1][0][0] == [
+                        "caja",
+                        str(temp_folder),
+                    ]
 
 
 # =============================================================================

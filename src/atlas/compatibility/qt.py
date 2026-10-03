@@ -69,7 +69,7 @@ _POSIX_DESKTOP_PLATFORMS = (
 )
 
 
-def _configure_frozen_linux_environment() -> None:
+def _configure_frozen_linux_environment():
     """Suppress GIO module conflicts when running as a frozen binary.
 
     PyInstaller bundles GLib from the build system (Ubuntu 20.04). On
@@ -102,7 +102,7 @@ def _configure_frozen_linux_environment() -> None:
         )
 
 
-def _is_tiling_window_manager() -> bool:
+def _is_tiling_window_manager():
     """Return whether the current Linux/BSD session is a known tiling WM."""
     if not sys.platform.startswith(_POSIX_DESKTOP_PLATFORMS):
         return False
@@ -116,19 +116,26 @@ def _is_tiling_window_manager() -> bool:
     return any(manager in session_name for manager in _TILING_WINDOW_MANAGERS)
 
 
-def _configure_linux_environment() -> None:
-    """Use XCB unless the user explicitly selects another Qt backend.
+def _configure_linux_environment():
+    """Select appropriate Qt backend for Linux/BSD sessions.
 
-    This retains working X11/XWayland support for every desktop, including
-    tiling window managers. ``QT_QPA_PLATFORM`` always takes precedence.
+    Retains working X11/XWayland support for desktops and tiling
+    managers, with fallback to Wayland when only Wayland is active.
+    ``QT_QPA_PLATFORM`` always takes precedence if already set.
     """
     if not sys.platform.startswith(_POSIX_DESKTOP_PLATFORMS) or os.environ.get(
         "QT_QPA_PLATFORM"
     ):
         return
 
-    os.environ["QT_QPA_PLATFORM"] = "xcb"
-    LOGGER.debug("QT_QPA_PLATFORM set to 'xcb' for Linux/BSD.")
+    # If running on pure Wayland without DISPLAY, try wayland then xcb.
+    # Otherwise prefer xcb then wayland.
+    if os.environ.get("WAYLAND_DISPLAY") and not os.environ.get("DISPLAY"):
+        os.environ["QT_QPA_PLATFORM"] = "wayland;xcb"
+        LOGGER.debug("QT_QPA_PLATFORM set to 'wayland;xcb' for Linux/BSD.")
+    else:
+        os.environ["QT_QPA_PLATFORM"] = "xcb;wayland"
+        LOGGER.debug("QT_QPA_PLATFORM set to 'xcb;wayland' for Linux/BSD.")
 
 
 _configure_frozen_linux_environment()

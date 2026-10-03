@@ -98,12 +98,16 @@ find_appimagetool() {
 architecture="$(appimage_architecture)"
 output="${1:-$project_root/dist/Atlas-${architecture}.AppImage}"
 
-for command in python install; do
-    if ! command -v "$command" >/dev/null 2>&1; then
-        echo "Required command not found: $command" >&2
-        exit 1
-    fi
-done
+python_bin="${PYTHON:-$(command -v python3 || command -v python || true)}"
+if [[ -z "$python_bin" ]]; then
+    echo "Required command not found: python3 or python" >&2
+    exit 1
+fi
+
+if ! command -v install >/dev/null 2>&1; then
+    echo "Required command not found: install" >&2
+    exit 1
+fi
 
 for file in AppRun atlas.desktop; do
     if [[ ! -f "$metadata_dir/$file" ]]; then
@@ -120,7 +124,7 @@ fi
 find_appimagetool "$architecture"
 
 cd "$project_root"
-python -m PyInstaller --noconfirm --clean appimage.spec
+"$python_bin" -m PyInstaller --noconfirm --clean appimage.spec
 
 # appimagetool discovers these conventional files at the AppDir root.
 install -Dm755 "$metadata_dir/AppRun" "$appdir/AppRun"

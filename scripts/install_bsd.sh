@@ -28,11 +28,11 @@ fi
 # ==============================================================================
 # OS COMPATIBILITY CHECK
 # ==============================================================================
-# Check if the system has older ABI libraries if required
-if ! grep -q "libutil.so.9" /var/run/ld-elf.so.hints 2>/dev/null; then
-    echo "Checking for FreeBSD 13 ABI compatibility libraries..."
+# Check if running on newer FreeBSD without FreeBSD 10 legacy runtime libraries
+if ! grep -q "libutil.so.9" /var/run/ld-elf.so.hints 2>/dev/null && [ ! -f /lib/libutil.so.9 ] && [ ! -f /usr/lib/libutil.so.9 ]; then
+    echo "Checking for FreeBSD 10 ABI compatibility libraries..."
     if command -v pkg >/dev/null 2>&1; then
-        pkg install -y compat13x-amd64 2>/dev/null || true
+        pkg install -y compat10x-amd64 2>/dev/null || true
     fi
 fi
 

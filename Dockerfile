@@ -34,6 +34,7 @@ COPY . /app
 
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install --upgrade pip && \
+    pip install PyQt5 && \
     pip install -e ".[dev,gui]"
 
 # Headless Qt mode

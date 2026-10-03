@@ -1,0 +1,120 @@
+name: Build Linux Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - alpha
+      - beta
+      - main
+    tags:
+      - 'v*'
+    paths:
+      - 'src/**'
+      - 'assets/**'
+      - 'configs/**'
+      - 'installer/appimage/**'
+      - 'installer/debian/**'
+      - 'scripts/build_appimage.sh'
+      - 'scripts/build_deb.sh'
+      - 'appimage.spec'
+      - 'pyproject.toml'
+      - '.github/workflows/build_linux.yml'
+
+jobs:
+  build-linux:
+    name: Build Linux x86_64 (Ubuntu 14.04 LTS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Prepare build tools & PyInstaller source
+        run: |
+          mkdir -p .cache/build
+
+          # Fetch PyInstaller 3.3.1 source tarball using host pip (guaranteed modern TLS)
+          pip download --no-deps "pyinstaller==3.3.1" -d .cache/build/
+
+          # Download AppImageKit 13 (built on CentOS 6, runs on Ubuntu 14.04 GLIBC 2.19 and modern distros)
+          curl -fsSL -o .cache/build/appimagetool-x86_64.AppImage \
+            https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-x86_64.AppImage
+          chmod +x .cache/build/appimagetool-x86_64.AppImage
+
+      - name: Build AppImage and DEB in Ubuntu 14.04 LTS Container
+        run: |
+          docker run --rm \
+            -v "$PWD:/workspace" \
+            -w /workspace \
+            ubuntu:14.04 \
+            bash -c '
+              set -e
+              export DEBIAN_FRONTEND=noninteractive
+
+              # 1. Update APT sources (fallback to old-releases if archive ever 404s)
+              apt-get update || {
+                sed -i -e "s/archive.ubuntu.com\|security.ubuntu.com/old-releases.ubuntu.com/g" /etc/apt/sources.list
+                apt-get update
+              }
+
+              # 2. Install native Trusty packages (Python 3.4, PyQt4, build tools)
+              apt-get install -y --no-install-recommends \
+                python3 \
+                python3-dev \
+                python3-setuptools \
+                python3-pyqt4 \
+                build-essential \
+                pkg-config \
+                binutils \
+                dpkg-dev \
+                file \
+                ca-certificates
+
+              # Ensure python points to python3
+              ln -sf /usr/bin/python3 /usr/local/bin/python
+              ln -sf /usr/bin/python3 /usr/local/bin/python3
+
+              # 3. Install PyInstaller 3.3.1 from local source
+              tar -xzf .cache/build/PyInstaller-3.3.1.tar.gz -C /tmp/
+              (cd /tmp/PyInstaller-3.3.1 && python setup.py install)
+
+              # 4. Deploy appimagetool into PATH
+              cp .cache/build/appimagetool-x86_64.AppImage /usr/local/bin/appimagetool
+              chmod +x /usr/local/bin/appimagetool
+
+              # 5. Build AppImage & Debian package
+              bash scripts/build_appimage.sh
+              bash scripts/build_deb.sh
+
+              # 6. Set readable permissions for host runner
+              chmod -R a+rX dist/
+              rm -rf .cache/build/PyInstaller-3.3.1 /tmp/PyInstaller-3.3.1 build
+            '
+
+      - name: Package AppImage on host (fallback if container lacked FUSE)
+        if: "!hashFiles('dist/Atlas-x86_64.AppImage')"
+        run: |
+          .cache/build/appimagetool-x86_64.AppImage --appimage-extract-and-run dist/Atlas.AppDir dist/Atlas-x86_64.AppImage || \
+          (
+            curl -fsSL -o /tmp/appimagetool https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+            chmod +x /tmp/appimagetool
+            ARCH=x86_64 /tmp/appimagetool --appimage-extract-and-run dist/Atlas.AppDir dist/Atlas-x86_64.AppImage
+          )
+
+      - name: Verify release artifacts
+        run: |
+          ls -lh dist/
+          test -f dist/Atlas-x86_64.AppImage
+          test -f dist/Atlas-x86_64.deb
+
+      - name: Upload Linux Release Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Atlas-Linux-x86_64
+          path: |
+            dist/Atlas-x86_64.AppImage
+            dist/Atlas-x86_64.deb
+          if-no-files-found: error
+          retention-days: 14

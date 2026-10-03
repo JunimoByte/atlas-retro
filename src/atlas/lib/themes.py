@@ -470,7 +470,11 @@ class ImageManager:
                 return
 
             loaded_icon = QtGui.QIcon(icon_path)
-            if loaded_icon.isNull() and icon_filename.endswith(".svg"):
+            svg_failed = loaded_icon.isNull() or (
+                hasattr(loaded_icon, "pixmap")
+                and loaded_icon.pixmap(32, 32).isNull()
+            )
+            if svg_failed and icon_filename.endswith(".svg"):
                 fallback_ico = cls.resource_path("icons/Icon.ico")
                 if fallback_ico and os.path.exists(fallback_ico):
                     loaded_icon = QtGui.QIcon(fallback_ico)

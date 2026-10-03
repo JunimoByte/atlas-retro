@@ -52,9 +52,12 @@ def run_gui(args: argparse.Namespace = None) -> int:
     has_policy_enum = hasattr(QtCore.Qt, "HighDpiScaleFactorRoundingPolicy")
 
     if has_policy_setter and has_policy_enum:
-        gui_app.setHighDpiScaleFactorRoundingPolicy(
-            QtCore.Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
-        )
+        try:
+            gui_app.setHighDpiScaleFactorRoundingPolicy(
+                QtCore.Qt.HighDpiScaleFactorRoundingPolicy.PassThrough
+            )
+        except Exception:
+            pass
 
     app = QtWidgets.QApplication(sys.argv)
     win = window.Window()

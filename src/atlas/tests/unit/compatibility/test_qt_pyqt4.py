@@ -1,6 +1,7 @@
 """Tests for Qt compatibility layer focusing on PyQt4 and PyQt5 switching."""
 
 import importlib
+import os
 import sys
 from unittest.mock import MagicMock
 
@@ -82,3 +83,62 @@ def test_active_qt_binding_is_pyqt4_or_pyqt5() -> None:
     qt_mod = importlib.import_module("atlas.compatibility.qt")
     assert qt_mod.QT_API in ("PyQt4", "PyQt5")
     assert qt_mod.QT_API != "PyQt6"
+
+
+def test_configure_linux_environment_respects_existing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify existing QT_QPA_PLATFORM is preserved."""
+    from atlas.compatibility import qt
+
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setitem(os.environ, "QT_QPA_PLATFORM", "offscreen")
+
+    qt._configure_linux_environment()
+    assert os.environ["QT_QPA_PLATFORM"] == "offscreen"
+
+
+def test_configure_linux_environment_wayland_detection(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify pure Wayland sessions configure wayland;xcb fallback."""
+    from atlas.compatibility import qt
+
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.delitem(os.environ, "QT_QPA_PLATFORM", raising=False)
+    monkeypatch.setitem(os.environ, "WAYLAND_DISPLAY", "wayland-0")
+    monkeypatch.delitem(os.environ, "DISPLAY", raising=False)
+
+    qt._configure_linux_environment()
+    assert os.environ["QT_QPA_PLATFORM"] == "wayland;xcb"
+
+
+def test_configure_linux_environment_xcb_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify standard X11/XWayland sessions configure xcb;wayland fallback."""
+    from atlas.compatibility import qt
+
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.delitem(os.environ, "QT_QPA_PLATFORM", raising=False)
+    monkeypatch.setitem(os.environ, "DISPLAY", ":0")
+    monkeypatch.delitem(os.environ, "WAYLAND_DISPLAY", raising=False)
+
+    qt._configure_linux_environment()
+    assert os.environ["QT_QPA_PLATFORM"] == "xcb;wayland"
+
+
+def test_configure_frozen_linux_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify frozen Linux session sets GIO_MODULE_DIR and NO_AT_BRIDGE."""
+    from atlas.compatibility import qt
+
+    monkeypatch.setattr(sys, "platform", "linux")
+    monkeypatch.setattr(sys, "frozen", True, raising=False)
+    monkeypatch.delitem(os.environ, "GIO_MODULE_DIR", raising=False)
+    monkeypatch.delitem(os.environ, "NO_AT_BRIDGE", raising=False)
+
+    qt._configure_frozen_linux_environment()
+    assert os.environ.get("GIO_MODULE_DIR") == ""
+    assert os.environ.get("NO_AT_BRIDGE") == "1"

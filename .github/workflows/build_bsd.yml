@@ -1,0 +1,104 @@
+name: Build FreeBSD Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - alpha
+      - beta
+      - main
+    tags:
+      - 'v*'
+    paths:
+      - 'src/**'
+      - 'assets/**'
+      - 'configs/**'
+      - 'scripts/install_bsd.sh'
+      - 'main.spec'
+      - 'pyproject.toml'
+      - '.github/workflows/build_bsd.yml'
+
+jobs:
+  build-freebsd:
+    name: Build FreeBSD 10 (GhostBSD 4.x compatible) x86_64
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Build in FreeBSD 10 VM
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: '10.4'
+          usesh: true
+          prepare: |
+            export ASSUME_ALWAYS_YES=yes
+            pkg bootstrap -f || true
+            pkg update -f || true
+
+            # Install Python 3 and package management tools
+            pkg install -y python3 py36-pip || \
+            pkg install -y python36 py36-pip || \
+            pkg install -y python35 py35-pip || \
+            pkg install -y python34 py34-pip || \
+            pkg install -y python3 || true
+
+            # Symlink python3 and python to installed binary
+            for p in /usr/local/bin/python3.6 /usr/local/bin/python3.5 /usr/local/bin/python3.4 /usr/local/bin/python3; do
+              if [ -f "$p" ]; then
+                ln -sf "$p" /usr/local/bin/python3
+                ln -sf "$p" /usr/local/bin/python
+                break
+              fi
+            done
+
+            # Install PyQt4 or PyQt5 (Atlas strictly targets PyQt4 / PyQt5, NEVER PyQt6)
+            pkg install -y py36-qt4 py36-qt4-gui py36-qt4-core py36-qt4-svg || \
+            pkg install -y py36-qt5 py36-qt5-gui py36-qt5-core py36-qt5-widgets py36-qt5-svg || \
+            pkg install -y py34-qt4 py34-qt4-gui py34-qt4-core py34-qt4-svg || \
+            pkg install -y py34-qt5 py34-qt5-gui py34-qt5-core py34-qt5-widgets py34-qt5-svg || \
+            pkg install -y py35-qt4 || \
+            pkg install -y py35-qt5 || true
+
+            # Install PyInstaller compatible with Python 3.4-3.6
+            pkg install -y py36-pyinstaller || \
+            pkg install -y py34-pyinstaller || \
+            python3 -m pip install "pyinstaller>=3.2,<4.0" || \
+            python3 -m pip install pyinstaller || true
+          run: |
+            set -e
+
+            # 1. Compile single-file portable binary
+            python3 -m PyInstaller main.spec --noconfirm --clean
+
+            # 2. Verify binary existence and permissions
+            if [ ! -f "dist/Atlas-x86_64-Portable" ]; then
+              echo "Build failure: dist/Atlas-x86_64-Portable was not generated." >&2
+              exit 1
+            fi
+            chmod +x dist/Atlas-x86_64-Portable
+
+            # 3. Stage the portable release bundle
+            rm -rf dist/FreeBSD_Release
+            mkdir -p dist/FreeBSD_Release
+            cp -p dist/Atlas-x86_64-Portable dist/FreeBSD_Release/
+            cp -p assets/icons/Icon.svg dist/FreeBSD_Release/
+            cp -p scripts/install_bsd.sh dist/FreeBSD_Release/
+            chmod +x dist/FreeBSD_Release/install_bsd.sh
+
+            # 4. Package as compressed tar archive (matching GhostBSD release structure)
+            cd dist
+            tar -czvf FreeBSD_Release.tar.gz FreeBSD_Release/
+            cp FreeBSD_Release.tar.gz Atlas-FreeBSD10-x86_64.tar.gz
+
+      - name: Upload FreeBSD Release Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Atlas-FreeBSD10-GhostBSD4-x86_64
+          path: |
+            dist/FreeBSD_Release.tar.gz
+            dist/Atlas-FreeBSD10-x86_64.tar.gz
+          if-no-files-found: error
+          retention-days: 14
