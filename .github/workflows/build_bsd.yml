@@ -81,6 +81,7 @@ jobs:
             done
           run: |
             set -e
+            export PYTHONIOENCODING=utf-8
 
             # 1. Compile single-file portable binary
             python3 -m PyInstaller main.spec --noconfirm --clean

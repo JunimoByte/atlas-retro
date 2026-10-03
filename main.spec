@@ -28,7 +28,7 @@ if sys.platform.startswith(("freebsd", "openbsd", "netbsd", "dragonfly")):
     except Exception:
         pass
     if _bsd_extra_paths:
-        print("main.spec: BSD detected — adding to pathex: %s" % _bsd_extra_paths)
+        print("main.spec: BSD detected - adding to pathex: %s" % _bsd_extra_paths)
 
 # Ensure 'src' is in sys.path so submodules can be imported and discovered
 _base_dir = os.path.dirname(os.path.abspath(SPEC)) if "SPEC" in dir() else os.path.abspath(".")
