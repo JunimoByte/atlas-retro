@@ -24,6 +24,7 @@ def test_startup_does_not_attempt_network_access(
     monkeypatch.setattr(socket, "getaddrinfo", block_network)
     from atlas import gui
 
+    monkeypatch.setenv("DISPLAY", ":0")
     monkeypatch.setattr(gui.permissions, "is_elevated", lambda: False)
 
     original_application = gui.QtWidgets.QApplication

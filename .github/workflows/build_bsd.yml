@@ -45,14 +45,7 @@ jobs:
             # 1. Direct configuration to HTTP mirror to avoid expired Let's Encrypt CA validation on ancient FreeBSD 10
             mkdir -p /usr/local/etc/pkg/repos /etc/pkg
             sed -i '' -e 's|https://|http://|g' /etc/pkg/*.conf 2>/dev/null || true
-            cat << 'EOF' > /usr/local/etc/pkg/repos/FreeBSD.conf
-FreeBSD: {
-  url: "http://mirror.sg.gs/freebsd-pkg/${ABI}/latest",
-  mirror_type: "none",
-  signature_type: "none",
-  enabled: yes
-}
-EOF
+            printf 'FreeBSD: {\n  url: "http://mirror.sg.gs/freebsd-pkg/${ABI}/latest",\n  mirror_type: "none",\n  signature_type: "none",\n  enabled: yes\n}\n' > /usr/local/etc/pkg/repos/FreeBSD.conf
 
             # 2. Extract pkg directly if missing
             if ! command -v pkg >/dev/null 2>&1; then
