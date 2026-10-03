@@ -43,7 +43,9 @@ def mock_windows_admin(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     monkeypatch.delattr(permissions.os, "geteuid", raising=False)
     mock_ver = MagicMock()
     mock_ver.major = 10
-    monkeypatch.setattr(permissions.sys, "getwindowsversion", lambda: mock_ver)
+    monkeypatch.setattr(
+        permissions.sys, "getwindowsversion", lambda: mock_ver, raising=False
+    )
     mock_admin = MagicMock(return_value=1)
     mock_windll = MagicMock()
     mock_windll.shell32.IsUserAnAdmin = mock_admin
@@ -60,7 +62,9 @@ def mock_windows_nonadmin(monkeypatch: pytest.MonkeyPatch) -> MagicMock:
     monkeypatch.delattr(permissions.os, "geteuid", raising=False)
     mock_ver = MagicMock()
     mock_ver.major = 10
-    monkeypatch.setattr(permissions.sys, "getwindowsversion", lambda: mock_ver)
+    monkeypatch.setattr(
+        permissions.sys, "getwindowsversion", lambda: mock_ver, raising=False
+    )
     mock_admin = MagicMock(return_value=0)
     mock_windll = MagicMock()
     mock_windll.shell32.IsUserAnAdmin = mock_admin
@@ -113,7 +117,9 @@ def test_is_elevated_windows_xp(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delattr(permissions.os, "geteuid", raising=False)
     mock_ver = MagicMock()
     mock_ver.major = 5
-    monkeypatch.setattr(permissions.sys, "getwindowsversion", lambda: mock_ver)
+    monkeypatch.setattr(
+        permissions.sys, "getwindowsversion", lambda: mock_ver, raising=False
+    )
     mock_admin = MagicMock(return_value=1)
     mock_windll = MagicMock()
     mock_windll.shell32.IsUserAnAdmin = mock_admin

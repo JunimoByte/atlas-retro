@@ -29,10 +29,14 @@ ln -sf /usr/bin/python3 /usr/local/bin/python
 ln -sf /usr/bin/python3 /usr/local/bin/python3
 
 echo "==> Deploying offline build dependencies and PyInstaller 3.3.1..."
-python3 -c "import zipfile, glob, os, sys; target = '/usr/local/lib/python3.4/dist-packages'; os.path.exists(target) or os.makedirs(target); [zipfile.ZipFile(w).extractall(target) for w in glob.glob('.cache/build/*.whl')]"
+python3 -c "import zipfile, glob, os; target = '/usr/local/lib/python3.4/dist-packages'; os.path.exists(target) or os.makedirs(target); [zipfile.ZipFile(w).extractall(target) for w in glob.glob('.cache/build/*.whl') if not any(k in os.path.basename(w) for k in ('setuptools', 'wheel', 'pip'))]"
 
-tar -xzf .cache/build/PyInstaller-3.3.1.tar.gz -C /tmp/
-(cd /tmp/PyInstaller-3.3.1 && python3 setup.py install)
+for pkg in future-0.16.0 pefile-2017.11.5 PyInstaller-3.3.1; do
+  if [ -f .cache/build/${pkg}.tar.gz ]; then
+    tar -xzf .cache/build/${pkg}.tar.gz -C /tmp/
+    (cd /tmp/${pkg} && python3 setup.py install)
+  fi
+done
 
 echo "==> Building AppDir and Debian package..."
 bash scripts/build_appimage.sh

@@ -31,7 +31,7 @@ jobs:
       - name: Prepare PyInstaller source on host runner
         run: |
           mkdir -p .cache/build
-          pip download "pyinstaller==3.3.1" "future" "altgraph" "macholib" "pefile" -d .cache/build/
+          pip download --no-deps "pyinstaller==3.3.1" "future==0.16.0" "altgraph==0.15" "macholib==1.9" "pefile==2017.11.5" -d .cache/build/
 
       - name: Build in FreeBSD 10 VM
         uses: vmactions/freebsd-vm@v1
@@ -72,11 +72,13 @@ jobs:
             done
 
             # 5. Install PyInstaller 3.3.1 offline from downloaded tarball and wheels
-            python3 -c 'import zipfile, glob; [zipfile.ZipFile(w).extractall("/usr/local/lib/python3.6/site-packages") for w in glob.glob(".cache/build/*.whl")]'
-            if [ -f .cache/build/PyInstaller-3.3.1.tar.gz ]; then
-              tar -xzf .cache/build/PyInstaller-3.3.1.tar.gz -C /tmp/
-              (cd /tmp/PyInstaller-3.3.1 && python3 setup.py install)
-            fi
+            python3 -c "import zipfile, glob, os; target = '/usr/local/lib/python3.6/site-packages'; [zipfile.ZipFile(w).extractall(target) for w in glob.glob('.cache/build/*.whl') if not any(k in os.path.basename(w) for k in ('setuptools', 'wheel', 'pip'))]"
+            for pkg in future-0.16.0 pefile-2017.11.5 PyInstaller-3.3.1; do
+              if [ -f .cache/build/${pkg}.tar.gz ]; then
+                tar -xzf .cache/build/${pkg}.tar.gz -C /tmp/
+                (cd /tmp/${pkg} && python3 setup.py install)
+              fi
+            done
           run: |
             set -e
 

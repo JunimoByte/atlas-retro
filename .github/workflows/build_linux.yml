@@ -36,7 +36,7 @@ jobs:
           mkdir -p .cache/build
 
           # Fetch PyInstaller 3.3.1 and dependencies using host pip (guaranteed modern TLS)
-          pip download "pyinstaller==3.3.1" "future" "altgraph" "macholib" "pefile" -d .cache/build/
+          pip download --no-deps "pyinstaller==3.3.1" "future==0.16.0" "altgraph==0.15" "macholib==1.9" "pefile==2017.11.5" -d .cache/build/
 
           # Download official appimagetool release
           curl -fsSL -o .cache/build/appimagetool-x86_64.AppImage \

@@ -235,9 +235,10 @@ class WindowsChromeManager:
     def _set_dwm_int(window, attribute: int, value: int) -> None:
         """Set an integer DWM attribute via ctypes."""
         try:
-            ver = sys.getwindowsversion()
-            if ver.major < 6:
-                return
+            if hasattr(sys, "getwindowsversion"):
+                ver = sys.getwindowsversion()
+                if ver.major < 6:
+                    return
 
             import ctypes
 
