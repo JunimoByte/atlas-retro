@@ -144,7 +144,6 @@ def main() -> None:
             and sys.platform != "darwin"
             and not os.environ.get("DISPLAY")
             and not os.environ.get("WAYLAND_DISPLAY")
-            and os.environ.get("QT_QPA_PLATFORM") != "offscreen"
         ):
             LOGGER.info(
                 "No graphical display detected ($DISPLAY is unset). "
