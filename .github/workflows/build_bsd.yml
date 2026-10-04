@@ -38,6 +38,8 @@ jobs:
         with:
           release: '10.4'
           usesh: true
+          mem: 4096
+          cache-after-prepare: true
           prepare: |
             export ASSUME_ALWAYS_YES=yes
             export PACKAGESITE="http://mirror.sg.gs/freebsd-pkg/FreeBSD:10:amd64/latest"
@@ -56,11 +58,11 @@ jobs:
             fi
 
             # 3. Update catalogue over HTTP
-            pkg update -f || true
+            pkg update || true
 
-            # 4. Install Python 3.6 and PyQt4 / PyQt5 packages from FreeBSD 10 repo
-            pkg install -y python36 py36-setuptools py36-qt4 py36-qt4-gui py36-qt4-core py36-qt4-svg || \
-            pkg install -y python36 py36-setuptools py36-qt5 py36-qt5-gui py36-qt5-core py36-qt5-widgets py36-qt5-svg || true
+            # 4. Install Python 3.6 and minimalist PyQt4 / PyQt5 runtime (omit WebKit/Phonon/docs metaport)
+            pkg install -y python36 py36-setuptools py36-qt4-core py36-qt4-gui py36-qt4-svg || \
+            pkg install -y python36 py36-setuptools py36-qt5-core py36-qt5-gui py36-qt5-widgets py36-qt5-svg || true
 
             # Symlink python3 and python to installed Python 3.6
             for p in /usr/local/bin/python3.6 /usr/local/bin/python3.5 /usr/local/bin/python3.4 /usr/local/bin/python3; do
@@ -79,6 +81,10 @@ jobs:
                 (cd /tmp/${pkg} && python3 setup.py install)
               fi
             done
+
+            # 6. Clean downloaded package archives and temp files to reduce cached VM image size
+            pkg clean -y -a || true
+            rm -rf /tmp/future* /tmp/pefile* /tmp/PyInstaller* /tmp/pkg.txz
           run: |
             set -e
             export PYTHONIOENCODING=utf-8
