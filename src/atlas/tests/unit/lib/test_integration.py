@@ -562,6 +562,24 @@ def test_dispatch_open_folder_warning(
         assert "Failed to Open Folder" in args["message"]
 
 
+def test_dispatch_open_folder_warning_with_qt_app(
+    temp_folder: Path,
+) -> None:
+    """Verify warning dispatch invokes QTimer.singleShot when app exists."""
+    mock_app = MagicMock()
+    mock_timer = MagicMock()
+    mock_qt = MagicMock()
+    mock_qt.QtWidgets.QApplication.instance.return_value = mock_app
+    mock_qt.QtCore.QTimer = mock_timer
+
+    with patch.dict("sys.modules", {"atlas.compatibility.qt": mock_qt}):
+        integration._dispatch_open_folder_warning(temp_folder)
+        mock_timer.singleShot.assert_called_once()
+        args, _ = mock_timer.singleShot.call_args
+        assert args[0] == 0
+        assert callable(args[1])
+
+
 # =============================================================================
 # TEST EXECUTION
 # =============================================================================

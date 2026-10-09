@@ -430,7 +430,7 @@ def _dispatch_open_folder_warning(folder_path: Path) -> None:
         app = QtWidgets.QApplication.instance()
         if app is not None:
             QtCore.QTimer.singleShot(
-                0, app, lambda: _show_open_folder_failed(folder_path)
+                0, lambda: _show_open_folder_failed(folder_path)
             )
             return
     except Exception:
