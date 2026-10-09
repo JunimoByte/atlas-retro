@@ -7,6 +7,7 @@ Unit tests for integration.py OS folder helpers.
 # IMPORTS
 # =============================================================================
 
+import subprocess
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -423,6 +424,142 @@ def test_open_folder_platform_mate_caja_fallback(
                         "caja",
                         str(temp_folder),
                     ]
+
+
+def test_is_tiling_window_manager_sunos(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify SunOS is recognized for tiling window manager detection."""
+    monkeypatch.setattr(sys, "platform", "sunos5")
+    monkeypatch.setenv("XDG_CURRENT_DESKTOP", "i3")
+    assert integration._is_tiling_window_manager() is True
+
+
+def test_build_terminal_command() -> None:
+    """Verify command structure for various terminal emulators."""
+    target = "/home/user/backup"
+    assert integration._build_terminal_command("foot", "mc", target) == [
+        "foot", "mc", target
+    ]
+    assert integration._build_terminal_command("kitty", "ranger", target) == [
+        "kitty", "ranger", target
+    ]
+    assert integration._build_terminal_command("wezterm", "nnn", target) == [
+        "wezterm", "start", "--", "nnn", target
+    ]
+    assert integration._build_terminal_command(
+        "xfce4-terminal", "mc", target
+    ) == ["xfce4-terminal", "-e", "mc /home/user/backup"]
+    assert integration._build_terminal_command(
+        "ghostty", "yazi", target
+    ) == ["ghostty", "-e", "yazi /home/user/backup"]
+    assert integration._build_terminal_command(
+        "gnome-terminal", "lf", target
+    ) == ["gnome-terminal", "--", "lf", target]
+    assert integration._build_terminal_command("xterm", "mc", target) == [
+        "xterm", "-e", "mc", target
+    ]
+
+
+def test_get_terminal_file_manager_candidates_found() -> None:
+    """Verify candidate building when terminal and manager are available."""
+    target = "/tmp/test"
+    with patch(
+        "shutil.which",
+        side_effect=lambda cmd, **kw: "/usr/bin/" + cmd if cmd in (
+            "mc", "ranger", "xterm"
+        ) else None,
+    ):
+        candidates = integration._get_terminal_file_manager_candidates(target)
+        assert len(candidates) == 2
+        assert candidates[0] == ["xterm", "-e", "ranger", target]
+        assert candidates[1] == ["xterm", "-e", "mc", target]
+
+
+def test_get_terminal_file_manager_candidates_none() -> None:
+    """Verify empty list returned when no terminal or manager is present."""
+    target = "/tmp/test"
+    with patch("shutil.which", return_value=None):
+        assert integration._get_terminal_file_manager_candidates(target) == []
+
+
+def test_open_posix_cmd_dispatcher_timeout() -> None:
+    """Verify dispatcher timeout triggers process termination."""
+    with patch("subprocess.Popen") as mock_popen:
+        proc = MagicMock()
+        proc.wait.side_effect = subprocess.TimeoutExpired("xdg-open", 3)
+        mock_popen.return_value = proc
+        assert integration._open_posix_cmd(
+            ["xdg-open", "/test"], {"PATH": "/bin"}
+        ) is False
+        proc.kill.assert_called_once()
+
+
+def test_open_posix_cmd_dispatcher_nonzero_exit() -> None:
+    """Verify dispatcher exiting with error code returns False."""
+    with patch("subprocess.Popen") as mock_popen:
+        proc = MagicMock()
+        proc.wait.return_value = None
+        proc.poll.return_value = 2
+        mock_popen.return_value = proc
+        assert integration._open_posix_cmd(
+            ["xdg-open", "/test"], {"PATH": "/bin"}
+        ) is False
+
+
+def test_open_posix_cmd_direct_fm_success() -> None:
+    """Verify direct file manager spawns detached and succeeds."""
+    with patch("subprocess.Popen") as mock_popen:
+        proc = MagicMock()
+        proc.wait.return_value = None
+        proc.poll.return_value = None
+        mock_popen.return_value = proc
+        assert integration._open_posix_cmd(
+            ["dolphin", "/test"], {"PATH": "/bin"}
+        ) is True
+
+
+def test_open_posix_cmd_direct_fm_instant_crash() -> None:
+    """Verify direct file manager crashing immediately returns False."""
+    with patch("subprocess.Popen") as mock_popen:
+        proc = MagicMock()
+        proc.wait.return_value = None
+        proc.poll.return_value = 127
+        mock_popen.return_value = proc
+        assert integration._open_posix_cmd(
+            ["dolphin", "/test"], {"PATH": "/bin"}
+        ) is False
+
+
+def test_get_linux_file_manager_candidates_modern_and_term(
+    temp_folder: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify modern desktop FMs and terminal candidates are included."""
+    monkeypatch.delenv("XDG_CURRENT_DESKTOP", raising=False)
+    monkeypatch.delenv("KDE_SESSION_VERSION", raising=False)
+    monkeypatch.delenv("MATE_DESKTOP_SESSION_ID", raising=False)
+    with patch(
+        "atlas.lib.integration._get_terminal_file_manager_candidates",
+        return_value=[["xterm", "-e", "mc", str(temp_folder)]],
+    ):
+        candidates = integration._get_linux_file_manager_candidates(
+            temp_folder
+        )
+        commands = [cmd[0] for cmd in candidates]
+        assert "cosmic-files" in commands
+        assert "pantheon-files" in commands
+        assert "xterm" in commands
+
+
+def test_dispatch_open_folder_warning(
+    temp_folder: Path, mock_warning: MagicMock
+) -> None:
+    """Verify warning dispatch invokes show_warning."""
+    with patch.dict("sys.modules", {"atlas.compatibility.qt": None}):
+        integration._dispatch_open_folder_warning(temp_folder)
+        mock_warning.assert_called_once()
+        args = mock_warning.call_args[1]
+        assert "Failed to Open Folder" in args["message"]
 
 
 # =============================================================================

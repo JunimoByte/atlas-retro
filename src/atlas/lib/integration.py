@@ -49,7 +49,7 @@ _LINUX_SESSION_VARIABLES = (
 def _is_tiling_window_manager() -> bool:
     """Return True if the current Linux session is a known tiling WM."""
     if not sys.platform.startswith(
-        ("linux", "freebsd", "openbsd", "netbsd", "dragonfly")
+        ("linux", "freebsd", "openbsd", "netbsd", "dragonfly", "sunos")
     ):
         return False
     if "SWAYSOCK" in os.environ or "I3SOCK" in os.environ:
@@ -87,6 +87,84 @@ def _is_xfce() -> bool:
         os.environ.get(v, "") for v in _LINUX_SESSION_VARIABLES
     ).lower()
     return "xfce" in desktop or "xubuntu" in desktop
+
+
+# =============================================================================
+# FILE OPENER TIMEOUT & TERMINAL FILE MANAGERS
+# =============================================================================
+
+OPENER_TIMEOUT_SECONDS = 3
+"""Timeout in seconds for folder openers to avoid D-Bus/portal hangs."""
+
+_DISPATCHER_COMMANDS = {
+    "xdg-open",
+    "gio",
+    "gvfs-open",
+    "gnome-open",
+    "mate-open",
+    "exo-open",
+    "kde-open",
+    "kde-open5",
+    "kde-open6",
+    "kioclient",
+    "kioclient5",
+    "kioclient6",
+    "kfmclient",
+}
+
+_TERMINAL_FILE_MANAGERS = ("ranger", "yazi", "nnn", "lf", "mc")
+
+_TERMINAL_EMULATORS = (
+    "foot",
+    "alacritty",
+    "kitty",
+    "wezterm",
+    "ghostty",
+    "x-terminal-emulator",
+    "xfce4-terminal",
+    "konsole",
+    "gnome-terminal",
+    "xterm",
+    "urxvt",
+)
+
+
+def _build_terminal_command(term: str, fm: str, path: str) -> List[str]:
+    """Build command to run a terminal file manager inside an emulator."""
+    if term in ("foot", "kitty"):
+        return [term, fm, path]
+    if term == "wezterm":
+        return ["wezterm", "start", "--", fm, path]
+    if term in ("xfce4-terminal", "ghostty"):
+        return [term, "-e", "%s %s" % (fm, path)]
+    if term == "gnome-terminal":
+        return ["gnome-terminal", "--", fm, path]
+    return [term, "-e", fm, path]
+
+
+def _get_terminal_file_manager_candidates(
+    target: str, env: Optional[Dict[str, str]] = None
+) -> List[List[str]]:
+    """Return command candidates for terminal-based file managers."""
+    path_env = env.get("PATH") if env else None
+    available_fms = [
+        fm for fm in _TERMINAL_FILE_MANAGERS
+        if shutil.which(fm, path=path_env)
+    ]
+    if not available_fms:
+        return []
+
+    available_terms = [
+        t for t in _TERMINAL_EMULATORS
+        if shutil.which(t, path=path_env)
+    ]
+    if not available_terms:
+        return []
+
+    term = available_terms[0]
+    return [
+        _build_terminal_command(term, fm, target) for fm in available_fms
+    ]
 
 
 # =============================================================================
@@ -147,16 +225,19 @@ _clean_posix_environ = _get_clean_desktop_environment
 
 def _get_linux_file_manager_candidates(
     folder_path: Path,
+    env: Optional[Dict[str, str]] = None,
 ) -> List[List[str]]:
     """Return ordered command candidates to open a folder on Linux/POSIX.
 
     Detects the active desktop session (prioritizing KDE, MATE, XFCE,
     or GNOME tools accordingly) and includes comprehensive fallbacks
-    for older distributions (gvfs-open, gnome-open, kde-open) and
-    lightweight/retro window managers.
+    for older distributions (gvfs-open, gnome-open, kde-open), modern
+    desktops (cosmic-files, pantheon-files), and terminal file managers
+    (ranger, yazi, nnn, lf, mc).
 
     Args:
         folder_path (Path): Path to the folder to open.
+        env (Optional[Dict[str, str]]): Cleaned environment dictionary.
 
     Returns:
         List[List[str]]: Candidate command arguments.
@@ -176,6 +257,7 @@ def _get_linux_file_manager_candidates(
             ["kioclient", "exec", target],
             ["kfmclient", "openURL", target],
             ["konqueror", target],
+            ["krusader", target],
             ["gio", "open", target],
             ["gvfs-open", target],
         ])
@@ -205,6 +287,8 @@ def _get_linux_file_manager_candidates(
         ["caja", target],
         ["nemo", target],
         ["pcmanfm-qt", target],
+        ["cosmic-files", target],    # Modern COSMIC desktop
+        ["pantheon-files", target],  # elementary OS
         ["exo-open", target],
         ["mate-open", target],
         ["gnome-open", target],
@@ -217,6 +301,10 @@ def _get_linux_file_manager_candidates(
         ["doublecmd", target],
         ["krusader", target],
     ])
+
+    candidates.extend(
+        _get_terminal_file_manager_candidates(target, env=env)
+    )
 
     # Deduplicate preserving order
     seen = set()
@@ -238,6 +326,10 @@ def _get_linux_file_manager_candidates(
 def _open_posix_cmd(cmd: List[str], env: Dict[str, str]) -> bool:
     """Attempt to launch a command non-blocking and detached.
 
+    For launcher tools (such as xdg-open or gio), waits briefly with a
+    timeout to detect failure or D-Bus/portal hangs. For direct file
+    managers and terminal emulators, spawns detached in a new session.
+
     Args:
         cmd (List[str]): Command arguments.
         env (Dict[str, str]): Cleaned environment variables.
@@ -248,6 +340,7 @@ def _open_posix_cmd(cmd: List[str], env: Dict[str, str]) -> bool:
 
     """
     try:
+        exe = cmd[0]
         kwargs = {
             "env": env,
             "stdout": subprocess.DEVNULL,
@@ -258,17 +351,25 @@ def _open_posix_cmd(cmd: List[str], env: Dict[str, str]) -> bool:
 
         proc = subprocess.Popen(cmd, **kwargs)
 
-        # For launcher scripts that exit immediately (xdg-open, gio, etc.),
-        # give a tiny moment (50ms) to detect immediate launch failures.
-        exe = cmd[0]
-        if exe in (
-            "xdg-open", "gio", "gvfs-open",
-            "gnome-open", "mate-open", "exo-open",
-        ):
+        if exe in _DISPATCHER_COMMANDS:
             try:
-                proc.wait(timeout=0.05)
+                proc.wait(timeout=OPENER_TIMEOUT_SECONDS)
+            except subprocess.TimeoutExpired:
+                LOGGER.warning(
+                    "Opener '%s' timed out after %ds (likely D-Bus hang); "
+                    "trying next candidate",
+                    exe,
+                    OPENER_TIMEOUT_SECONDS,
+                )
+                try:
+                    proc.kill()
+                    proc.wait()
+                except Exception:
+                    pass
+                return False
             except Exception:
                 pass
+
             returncode = proc.poll()
             if (
                 returncode is not None
@@ -280,10 +381,65 @@ def _open_posix_cmd(cmd: List[str], env: Dict[str, str]) -> bool:
                 )
                 return False
 
+            return True
+
+        # For direct GUI file managers and terminal emulators:
+        # Give a tiny moment (50ms) to detect immediate launch failures.
+        try:
+            proc.wait(timeout=0.05)
+        except Exception:
+            pass
+
+        returncode = proc.poll()
+        if (
+            returncode is not None
+            and isinstance(returncode, int)
+            and returncode != 0
+        ):
+            LOGGER.debug(
+                "Direct file manager '%s' exited immediately (code %s)",
+                exe,
+                returncode,
+            )
+            return False
+
         return True
     except Exception as err:
         LOGGER.debug("Failed to launch %s: %s", cmd[0], err)
         return False
+
+
+def _show_open_folder_failed(folder_path: Path) -> None:
+    """Display warning when no file manager could open the folder."""
+    show_warning(
+        title="Caution",
+        message="Failed to Open Folder",
+        details=(
+            "Atlas could not find a supported file manager to open:\n\n"
+            "%s\n\n"
+            "Please open this folder manually." % str(folder_path)
+        ),
+    )
+
+
+def _dispatch_open_folder_warning(folder_path: Path) -> None:
+    """Safely dispatch open folder warning to the main Qt thread."""
+    try:
+        from atlas.compatibility.qt import QtCore, QtWidgets
+
+        app = QtWidgets.QApplication.instance()
+        if app is not None:
+            QtCore.QTimer.singleShot(
+                0, app, lambda: _show_open_folder_failed(folder_path)
+            )
+            return
+    except Exception:
+        pass
+
+    try:
+        _show_open_folder_failed(folder_path)
+    except Exception as exc:
+        LOGGER.debug("Could not show open folder failure dialog: %s", exc)
 
 
 def _run_linux_open(folder_path: Path) -> bool:
@@ -301,7 +457,7 @@ def _run_linux_open(folder_path: Path) -> bool:
 
     """
     env = _get_clean_desktop_environment()
-    candidates = _get_linux_file_manager_candidates(folder_path)
+    candidates = _get_linux_file_manager_candidates(folder_path, env=env)
 
     for cmd in candidates:
         exe = cmd[0]
@@ -309,7 +465,6 @@ def _run_linux_open(folder_path: Path) -> bool:
         # presence in PATH if PATH is set.
         if (
             exe != "xdg-open"
-            and env.get("PATH")
             and shutil.which(exe, path=env.get("PATH")) is None
         ):
             continue
