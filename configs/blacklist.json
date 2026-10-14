@@ -132,6 +132,13 @@
         "Download Service Storage",
         "Download Service Data",
         "ProvenanceData",
-        "ProvenanceDataTensors"
+        "ProvenanceDataTensors",
+        "Temporary Internet Files",
+        "Content.IE5",
+        "opcache",
+        "vps",
+        "temporary_downloads",
+        "kio_http_cache",
+        "kio_http"
     ]
 }

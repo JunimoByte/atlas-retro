@@ -21,16 +21,22 @@
         ],
         "COMMONAPPDATA": [
             "%PROGRAMDATA%",
-            "C:/ProgramData"
+            "%ALLUSERSPROFILE%/Application Data",
+            "C:/ProgramData",
+            "C:/Documents and Settings/All Users/Application Data"
         ],
         "LEGACY": [
-            "C:/",
+            "%ProgramFiles%",
+            "%ProgramFiles(x86)%",
+            "C:/Program Files",
+            "C:/Program Files (x86)",
             "C:/PROGRAMS",
-            "C:/Program Files"
+            "C:/"
         ]
     },
     "Linux": {
         "HOME": [
+            "$XDG_CONFIG_HOME",
             "~",
             "~/.config"
         ],
@@ -43,6 +49,7 @@
     },
     "BSD": {
         "HOME": [
+            "$XDG_CONFIG_HOME",
             "~",
             "~/.config"
         ]

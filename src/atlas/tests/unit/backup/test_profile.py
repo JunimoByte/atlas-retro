@@ -16,6 +16,7 @@ import pytest
 
 import atlas.backup.profile as profile_module
 from atlas.backup.profile import (
+    _expand_path_by_type,
     _expand_wildcard,
     _validate_profile_path,
     find_profile,
@@ -64,6 +65,25 @@ def test_expand_wildcard_nonexistent_base(tmp_path: Path) -> None:
 def test_expand_wildcard_empty_rel_path_returns_base(tmp_path: Path) -> None:
     """Verify that the base path is returned for an empty relative path."""
     assert tmp_path in _expand_wildcard(tmp_path, Path(""))
+
+
+# =============================================================================
+# TESTS — Expand path by type
+# =============================================================================
+
+
+def test_expand_path_by_type_skips_unexpanded_env_vars() -> None:
+    """Verify that unexpanded Windows %VAR% bases are skipped safely."""
+    mock_types = {"TestOS": {"CUSTOM": ["%NONEXISTENT_VAR_12345%"]}}
+    with patch.dict(profile_module.PATH_TYPES, mock_types, clear=True):
+        assert _expand_path_by_type("CUSTOM", "profile", "TestOS") == []
+
+
+def test_expand_path_by_type_skips_empty_expansion() -> None:
+    """Verify that env vars expanding to empty strings are skipped."""
+    mock_types = {"TestOS": {"CUSTOM": ["$NONEXISTENT_VAR_54321"]}}
+    with patch.dict(profile_module.PATH_TYPES, mock_types, clear=True):
+        assert _expand_path_by_type("CUSTOM", "profile", "TestOS") == []
 
 
 # =============================================================================

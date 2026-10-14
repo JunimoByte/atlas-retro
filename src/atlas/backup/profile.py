@@ -67,7 +67,12 @@ def _expand_path_by_type(
     seen = set()  # Track normalised absolute paths
 
     for base in bases:
-        base_path = Path(os.path.expandvars(os.path.expanduser(base)))
+        expanded_str = os.path.expandvars(os.path.expanduser(base))
+        if not expanded_str:
+            continue
+        if "%" in base and "%" in expanded_str:
+            continue
+        base_path = Path(expanded_str)
         candidates = _expand_wildcard(base_path, Path(path))
         for p in candidates:
             try:
