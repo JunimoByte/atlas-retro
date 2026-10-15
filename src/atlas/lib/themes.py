@@ -194,9 +194,15 @@ class ThemeDetector:
         try:
             app = QtWidgets.QApplication.instance()
             if app is not None:
-                bg = app.palette().color(QtGui.QPalette.ColorRole.Window)
-                if bg.isValid():
-                    return "Dark" if bg.lightness() < 128 else "Light"
+                color_role = getattr(
+                    getattr(QtGui.QPalette, "ColorRole", QtGui.QPalette),
+                    "Window",
+                    getattr(QtGui.QPalette, "Window", None),
+                )
+                if color_role is not None:
+                    bg = app.palette().color(color_role)
+                    if bg.isValid():
+                        return "Dark" if bg.lightness() < 128 else "Light"
         except Exception:
             LOGGER.error("Failed to query Qt palette for theme", exc_info=True)
         return "Unknown"
@@ -419,7 +425,15 @@ class ImageManager:
             full_path = os.path.abspath(os.path.join(base_path, filename))
 
             # Prevent directory traversal escaping the assets directory
-            if not full_path.startswith(base_path):
+            norm_base = os.path.normcase(os.path.abspath(base_path))
+            if not norm_base.endswith((os.sep, "/")):
+                norm_base += os.sep
+            norm_full = os.path.normcase(full_path)
+
+            if not (
+                norm_full == os.path.normcase(os.path.abspath(base_path))
+                or norm_full.startswith(norm_base)
+            ):
                 LOGGER.error(
                     "Resource path traversal attempt detected: %s", filename
                 )

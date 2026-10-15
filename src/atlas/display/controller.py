@@ -187,8 +187,14 @@ class Controller(QtCore.QObject):
         # Block signals so shutdown-path errors don't try to update
         # a half-destroyed UI (e.g. worker_error emitted after force-idle).
         self.signals.blockSignals(True)
+        was_active = (
+            self.state != ControllerState.IDLE
+            or self.worker is not None
+            or self._worker_thread is not None
+        )
         if self.state != ControllerState.IDLE:
             self._force_idle("application shutdown")
+        if was_active:
             self._request_worker_shutdown(wait=True)
 
     # =========================================================================

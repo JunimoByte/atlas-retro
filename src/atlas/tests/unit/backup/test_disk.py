@@ -138,6 +138,30 @@ def test_scandir_context_wrapper() -> None:
     assert closed == [True]
 
 
+def test_find_base_path_normcase_fallback(tmp_path: Path) -> None:
+    """Verify find_base_path matches even when path casing differs."""
+    source = tmp_path / "SourceDir"
+    source.mkdir()
+    child = source / "sub" / "file.txt"
+    child.parent.mkdir()
+    child.write_text("content")
+
+    matched = disk.find_base_path(child, [source])
+    assert matched == source
+
+
+def test_relative_zip_path_preserves_nested_structure(tmp_path: Path) -> None:
+    """Verify relative_zip_path preserves nested folders in fallback."""
+    base = tmp_path / "my_base"
+    base.mkdir()
+    nested = base / "level1" / "level2" / "target.txt"
+    nested.parent.mkdir(parents=True)
+    nested.write_text("data")
+
+    rel = disk.relative_zip_path(nested, base)
+    assert rel == "my_base/level1/level2/target.txt"
+
+
 # =============================================================================
 # TEST EXECUTION
 # =============================================================================

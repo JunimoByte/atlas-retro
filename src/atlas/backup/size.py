@@ -44,6 +44,7 @@ except Exception as error:
 # =============================================================================
 
 MAX_SCAN_TIME = 300
+MAX_DIR_DEPTH = 50
 
 # =============================================================================
 # EXCEPTIONS
@@ -125,19 +126,37 @@ def get_directory_size(  # noqa: C901
 
     try:
         root = Path(os.path.abspath(str(path_str)))
-    except Exception:
-        root = Path(path_str)
-
-    if not root.exists() or not root.is_dir():
+        if not root.exists() or not root.is_dir():
+            return 0
+    except OSError:
         return 0
+    except Exception:
+        try:
+            root = Path(path_str)
+            if not root.exists() or not root.is_dir():
+                return 0
+        except OSError:
+            return 0
 
-    stack = [str(root)]
+    stack = [(str(root), 0)]
+    visited_dirs = set()
+    try:
+        visited_dirs.add(os.path.normcase(os.path.realpath(str(root))))
+    except OSError:
+        visited_dirs.add(os.path.normcase(os.path.abspath(str(root))))
 
     while stack:
         if cancel_callback and cancel_callback():
             raise InterruptedError("Directory size scan cancelled by user")
 
-        current_dir = stack.pop()
+        current_dir, depth = stack.pop()
+        if depth > MAX_DIR_DEPTH:
+            LOGGER.warning(
+                "Exceeded maximum directory depth (%d) at %s",
+                MAX_DIR_DEPTH,
+                current_dir,
+            )
+            continue
 
         if time.monotonic() - start_time > MAX_SCAN_TIME:
             raise ScanTimeoutError(
@@ -152,7 +171,18 @@ def get_directory_size(  # noqa: C901
                     try:
                         if entry.is_dir(follow_symlinks=False):
                             if entry.name.lower() not in SKIP_FOLDERS:
-                                stack.append(entry.path)
+                                dir_path = entry.path
+                                try:
+                                    real_dir = os.path.normcase(
+                                        os.path.realpath(dir_path)
+                                    )
+                                except OSError:
+                                    real_dir = os.path.normcase(
+                                        os.path.abspath(dir_path)
+                                    )
+                                if real_dir not in visited_dirs:
+                                    visited_dirs.add(real_dir)
+                                    stack.append((dir_path, depth + 1))
                         elif entry.is_file(follow_symlinks=False):
                             total += entry.stat(follow_symlinks=False).st_size
                     except OSError as error:

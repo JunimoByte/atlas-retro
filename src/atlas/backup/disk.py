@@ -160,6 +160,18 @@ def find_base_path(file_path: Path, sources: List[Path]) -> Optional[Path]:
     for source in sources:
         if source in file_path.parents:
             return source
+
+    try:
+        norm_file = os.path.normcase(os.path.abspath(str(file_path)))
+        for source in sources:
+            norm_source = os.path.normcase(os.path.abspath(str(source)))
+            if not norm_source.endswith((os.sep, "/")):
+                norm_source += os.sep
+            if norm_file.startswith(norm_source):
+                return source
+    except Exception:
+        pass
+
     return None
 
 
@@ -178,10 +190,8 @@ def relative_zip_path(file_path: Path, base_path: Path) -> str:
         rel = file_path.relative_to(base_path)
     except ValueError:
         try:
-            rel = Path(os.path.abspath(str(file_path))).relative_to(
-                Path(os.path.abspath(str(base_path)))
-            )
-        except ValueError:
+            rel = os.path.relpath(str(file_path), str(base_path))
+        except (ValueError, OSError):
             rel = file_path.name
     rel_path = "{}/{}".format(base_path.name, rel)
     rel_path = rel_path.replace("\\", "/").replace(os.sep, "/")

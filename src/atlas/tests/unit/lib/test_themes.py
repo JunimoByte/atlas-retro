@@ -372,6 +372,29 @@ def test_icon_uses_ico_on_windows(monkeypatch: pytest.MonkeyPatch) -> None:
     mock_window.setWindowIcon.assert_called_once()
 
 
+def test_resource_path_prevents_sibling_traversal() -> None:
+    """Verify resource_path blocks traversal even into sibling directories."""
+    result = themes.ImageManager.resource_path("../assets_other/icon.png")
+    assert result is None
+
+
+def test_query_palette_color_role_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify _query_palette works when ColorRole is or is not present."""
+    mock_app = MagicMock()
+    mock_color = MagicMock()
+    mock_color.isValid.return_value = True
+    mock_color.lightness.return_value = 200
+    mock_app.palette().color.return_value = mock_color
+
+    monkeypatch.setattr(
+        themes.QtWidgets.QApplication, "instance", lambda: mock_app
+    )
+    theme = themes.ThemeDetector._query_palette()
+    assert theme == "Light"
+
+
 # =============================================================================
 # TEST EXECUTION
 # =============================================================================

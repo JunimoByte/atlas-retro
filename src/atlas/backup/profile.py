@@ -79,9 +79,10 @@ def _expand_path_by_type(
                 resolved = str(p.resolve())
             except Exception:
                 resolved = str(p.absolute())
-            if resolved not in seen:
+            seen_key = os.path.normcase(resolved)
+            if seen_key not in seen:
                 expanded.append(p)
-                seen.add(resolved)
+                seen.add(seen_key)
 
     return expanded
 

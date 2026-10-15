@@ -181,6 +181,31 @@ def test_create_output_dir(tmp_path: Path, pre_exists: bool) -> None:
     assert result.is_dir()
 
 
+def test_get_directory_size_skips_exceeding_max_depth(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify get_directory_size respects MAX_DIR_DEPTH limit."""
+    import atlas.backup.size as size_mod
+
+    monkeypatch.setattr(size_mod, "MAX_DIR_DEPTH", 2)
+    current = tmp_path
+    for i in range(4):
+        current = current / "dir{}".format(i)
+        current.mkdir()
+        (current / "file.txt").write_bytes(b"x" * 100)
+
+    total = size_mod.get_directory_size(tmp_path)
+    assert total <= 300
+
+
+def test_get_directory_size_handles_root_oserror(tmp_path: Path) -> None:
+    """Verify get_directory_size returns 0 if checking root raises OSError."""
+    from unittest.mock import patch
+
+    with patch.object(Path, "exists", side_effect=OSError("Access denied")):
+        assert get_directory_size(tmp_path) == 0
+
+
 # =============================================================================
 # TEST EXECUTION
 # =============================================================================

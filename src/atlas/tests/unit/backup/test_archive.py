@@ -414,6 +414,17 @@ def test_write_file_to_zip_handles_memory_error(tmp_path: Path) -> None:
             assert result is False
 
 
+def test_is_within_output_dir_casing(tmp_path: Path) -> None:
+    """Verify _is_within_output_dir handles case and traversal."""
+    out = tmp_path / "Backup"
+    target = out / "sub" / "archive.zip"
+    assert archive._is_within_output_dir(target, out) is True
+
+    # Sibling directory starting with same prefix should be rejected
+    sibling = tmp_path / "Backup_other" / "archive.zip"
+    assert archive._is_within_output_dir(sibling, out) is False
+
+
 # =============================================================================
 # TEST EXECUTION
 # =============================================================================

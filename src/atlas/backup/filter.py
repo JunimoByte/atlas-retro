@@ -48,6 +48,7 @@ except Exception as error:
 # =============================================================================
 
 MAX_FILE_SIZE = 25 * 1024**3
+MAX_DIR_DEPTH = 50
 
 # =============================================================================
 # FUNCTIONS
@@ -76,18 +77,34 @@ def scan_files(  # noqa: C901
 
     """
     for source_path in source_paths:
-        root_path = Path(source_path)
-
-        if not root_path.exists() or not root_path.is_dir():
+        try:
+            root_path = Path(source_path)
+            if not root_path.exists() or not root_path.is_dir():
+                continue
+        except OSError:
             continue
 
-        stack = [str(root_path)]
+        stack = [(str(root_path), 0)]
+        visited_dirs = set()
+        try:
+            visited_dirs.add(
+                os.path.normcase(os.path.realpath(str(root_path)))
+            )
+        except OSError:
+            visited_dirs.add(os.path.normcase(os.path.abspath(str(root_path))))
 
         while stack:
             if cancel_callback and cancel_callback():
                 return
 
-            current_dir = stack.pop()
+            current_dir, depth = stack.pop()
+            if depth > MAX_DIR_DEPTH:
+                LOGGER.warning(
+                    "Exceeded maximum directory depth (%d) at %s",
+                    MAX_DIR_DEPTH,
+                    current_dir,
+                )
+                continue
 
             try:
                 with safe_scandir(current_dir) as entries:
@@ -98,7 +115,18 @@ def scan_files(  # noqa: C901
                         try:
                             if entry.is_dir(follow_symlinks=False):
                                 if entry.name.lower() not in SKIP_FOLDERS:
-                                    stack.append(entry.path)
+                                    dir_path = entry.path
+                                    try:
+                                        real_dir = os.path.normcase(
+                                            os.path.realpath(dir_path)
+                                        )
+                                    except OSError:
+                                        real_dir = os.path.normcase(
+                                            os.path.abspath(dir_path)
+                                        )
+                                    if real_dir not in visited_dirs:
+                                        visited_dirs.add(real_dir)
+                                        stack.append((dir_path, depth + 1))
                             elif entry.is_file(follow_symlinks=False):
                                 file_name = entry.name
                                 _, file_ext = os.path.splitext(file_name)

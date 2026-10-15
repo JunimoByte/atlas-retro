@@ -145,6 +145,32 @@ def test_scan_files_continues_when_cancel_is_false(tmp_path: Path) -> None:
     assert len(results) >= 1
 
 
+def test_scan_files_skips_dirs_exceeding_max_depth(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify scan_files respects MAX_DIR_DEPTH limit."""
+    import atlas.backup.filter as filter_mod
+
+    monkeypatch.setattr(filter_mod, "MAX_DIR_DEPTH", 2)
+    current = tmp_path
+    for i in range(4):
+        current = current / "level{}".format(i)
+        current.mkdir()
+        make_file(current / "file.txt")
+
+    results = list(filter_mod.scan_files([tmp_path]))
+    assert len(results) <= 3
+
+
+def test_scan_files_handles_oserror_on_root(tmp_path: Path) -> None:
+    """Verify scan_files safely handles OSError when checking root_path."""
+    from unittest.mock import patch
+
+    with patch.object(Path, "exists", side_effect=OSError("Access denied")):
+        results = list(scan_files([tmp_path]))
+        assert results == []
+
+
 # =============================================================================
 # TEST EXECUTION
 # =============================================================================

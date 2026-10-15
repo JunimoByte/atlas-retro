@@ -104,6 +104,9 @@ def generate_zip_name() -> str:
 def _is_within_output_dir(path: Path, output_dir: Path) -> bool:
     """Return True if a resolved path stays within the output directory.
 
+    Handles drive letter and filesystem casing differences across
+    Python versions (particularly Python 3.4-3.11 on Windows).
+
     Args:
         path: Resolved candidate archive path.
         output_dir: Resolved output directory path.
@@ -113,9 +116,15 @@ def _is_within_output_dir(path: Path, output_dir: Path) -> bool:
 
     """
     try:
-        path.relative_to(output_dir)
-        return True
-    except ValueError:
+        norm_path = os.path.normcase(os.path.abspath(str(path)))
+        norm_out = os.path.normcase(os.path.abspath(str(output_dir)))
+        if not norm_out.endswith((os.sep, "/")):
+            norm_out += os.sep
+        return (
+            norm_path == os.path.normcase(os.path.abspath(str(output_dir)))
+            or norm_path.startswith(norm_out)
+        )
+    except Exception:
         return False
 
 
