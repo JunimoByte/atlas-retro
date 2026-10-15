@@ -192,7 +192,8 @@ class ThemeDetector:
     def _query_palette() -> str:
         """Detect theme by measuring app palette background luminance."""
         try:
-            app = QtWidgets.QApplication.instance()
+            app_fn = getattr(QtWidgets.QApplication, "instance", None)
+            app = app_fn() if callable(app_fn) else None
             if app is not None:
                 color_role = getattr(
                     getattr(QtGui.QPalette, "ColorRole", QtGui.QPalette),
@@ -351,7 +352,8 @@ class WindowsThemer:
     @classmethod
     def _apply_native(cls, window, dark: bool) -> None:
         """Apply native Qt style and window chrome."""
-        app = QtWidgets.QApplication.instance()
+        app_fn = getattr(QtWidgets.QApplication, "instance", None)
+        app = app_fn() if callable(app_fn) else None
         if app and hasattr(app, "setStyle"):
             try:
                 if "windows11" in [

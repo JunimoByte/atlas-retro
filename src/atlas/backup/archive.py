@@ -97,7 +97,19 @@ def get_zip_output_dir() -> Path:
 
 def generate_zip_name() -> str:
     """Generate a timestamped zip filename."""
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    try:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+    except Exception:
+        now = datetime.now()
+        timestamp = "{:04d}{:02d}{:02d}_{:02d}{:02d}{:02d}_{:06d}".format(
+            max(1980, now.year),
+            now.month,
+            now.day,
+            now.hour,
+            now.minute,
+            now.second,
+            now.microsecond,
+        )
     return "Unknown_{}.zip".format(timestamp)
 
 

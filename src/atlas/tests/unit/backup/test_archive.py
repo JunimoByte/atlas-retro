@@ -425,6 +425,36 @@ def test_is_within_output_dir_casing(tmp_path: Path) -> None:
     assert archive._is_within_output_dir(sibling, out) is False
 
 
+def test_generate_zip_name_normal_and_strftime_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify generate_zip_name has safe strftime fallback."""
+    name = archive.generate_zip_name()
+    assert name.startswith("Unknown_")
+    assert name.endswith(".zip")
+
+    class FakeDatetime:
+        year = 1899
+        month = 5
+        day = 12
+        hour = 8
+        minute = 30
+        second = 15
+        microsecond = 123456
+
+        def strftime(self, fmt):
+            raise ValueError("year=1899 is before 1900")
+
+    class FakeDatetimeClass:
+        @classmethod
+        def now(cls):
+            return FakeDatetime()
+
+    monkeypatch.setattr(archive, "datetime", FakeDatetimeClass)
+    fallback_name = archive.generate_zip_name()
+    assert fallback_name.startswith("Unknown_19800512_083015_123456.zip")
+
+
 # =============================================================================
 # TEST EXECUTION
 # =============================================================================

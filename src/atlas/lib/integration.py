@@ -427,7 +427,8 @@ def _dispatch_open_folder_warning(folder_path: Path) -> None:
     try:
         from atlas.compatibility.qt import QtCore, QtWidgets
 
-        app = QtWidgets.QApplication.instance()
+        app_fn = getattr(QtWidgets.QApplication, "instance", None)
+        app = app_fn() if callable(app_fn) else None
         if app is not None:
             QtCore.QTimer.singleShot(
                 0, lambda: _show_open_folder_failed(folder_path)

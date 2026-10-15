@@ -94,7 +94,10 @@ def show(
 
     """
     try:
-        existing_app = QtWidgets.QApplication.instance()
+        app_inst_fn = getattr(QtWidgets.QApplication, "instance", None)
+        existing_app = (
+            app_inst_fn() if callable(app_inst_fn) else None
+        )
         if (
             existing_app is None
             and os.name == "posix"

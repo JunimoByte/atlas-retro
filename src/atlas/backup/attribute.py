@@ -120,9 +120,9 @@ def create_zip_info(file_path: Path) -> zipfile.ZipInfo:
         st = file_path.stat()
         zi.date_time = safe_zipinfo_date(file_path, st.st_mtime)
         zi.external_attr = set_file_permissions(st.st_mode)
-    except OSError as error:
+    except Exception as error:
         LOGGER.debug(
-            "Failed to set file attributes for {}: {}".format(file_path, error)
+            "Failed to set file attributes for %s: %s", file_path, error
         )
         zi.external_attr = 0o600 << 16
     return zi
