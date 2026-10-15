@@ -59,7 +59,10 @@ def run_gui(args: argparse.Namespace = None) -> int:
         except Exception:
             pass
 
-    app = QtWidgets.QApplication(sys.argv)
+    app_inst_fn = getattr(QtWidgets.QApplication, "instance", None)
+    app = (
+        app_inst_fn() if callable(app_inst_fn) else None
+    ) or QtWidgets.QApplication(sys.argv)
     win = window.Window()
     themes.initialize(win)
 

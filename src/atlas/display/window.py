@@ -378,4 +378,7 @@ class Window(QtWidgets.QDialog):
         super(Window, self).resizeEvent(event)
 
         if hasattr(self, "interface") and hasattr(self.interface, "backdrop"):
-            self.interface.backdrop.setGeometry(self.rect())
+            try:
+                self.interface.backdrop.setGeometry(self.rect())
+            except (AttributeError, RuntimeError):
+                pass

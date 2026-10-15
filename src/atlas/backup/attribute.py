@@ -43,7 +43,15 @@ def safe_zipinfo_date(
     try:
         if mtime is None:
             mtime = file_path.stat().st_mtime
-        dt = datetime.fromtimestamp(max(0.0, mtime))
+        mtime_float = max(0.0, float(mtime))
+        try:
+            dt = datetime.fromtimestamp(mtime_float)
+        except (OSError, OverflowError, ValueError):
+            try:
+                dt = datetime.utcfromtimestamp(mtime_float)
+            except Exception:
+                return 1980, 1, 1, 0, 0, 0
+
         year = max(1980, min(dt.year, 2107))
         return (
             year,
@@ -53,9 +61,9 @@ def safe_zipinfo_date(
             dt.minute,
             dt.second,
         )
-    except (OSError, ValueError, OverflowError) as error:
+    except Exception as error:
         LOGGER.debug(
-            "Failed to get file date for {}: {}".format(file_path, error)
+            "Failed to get file date for %s: %s", file_path, error
         )
         return 1980, 1, 1, 0, 0, 0
 

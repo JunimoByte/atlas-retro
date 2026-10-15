@@ -301,6 +301,31 @@ def _archive_root_names(sources: Iterable[Path]) -> Dict[Path, str]:
     return archive_root_names
 
 
+def _atomic_finalize_archive(temp_zip_path: Path, zip_path: Path) -> None:
+    """Atomically rename temp archive with retry for transient file locks."""
+    last_error = None
+    for attempt in range(5):
+        try:
+            os.replace(str(temp_zip_path), str(zip_path))
+            return
+        except OSError as err:
+            last_error = err
+            safe_unlink(zip_path)
+            try:
+                os.replace(str(temp_zip_path), str(zip_path))
+                return
+            except OSError as err2:
+                last_error = err2
+                if attempt < 4:
+                    import time
+
+                    time.sleep(0.05 * (attempt + 1))
+
+    if last_error:
+        raise last_error
+    raise OSError("Failed to finalize ZIP archive")
+
+
 def write_zip(
     files: Iterable[Tuple[Path, Path]],
     zip_path: Path,
@@ -382,11 +407,7 @@ def write_zip(
                 "Zip creation produced an empty or missing archive"
             )
 
-        try:
-            os.replace(str(temp_zip_path), str(zip_path))
-        except OSError:
-            safe_unlink(zip_path)
-            os.replace(str(temp_zip_path), str(zip_path))
+        _atomic_finalize_archive(temp_zip_path, zip_path)
         archive_created = True
         LOGGER.info("Zip archive created: {}".format(zip_path))
     finally:

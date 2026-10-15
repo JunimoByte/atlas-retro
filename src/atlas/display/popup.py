@@ -107,7 +107,7 @@ def show(
             )
             return int(_BTN_OK)
 
-        app = existing_app or QtWidgets.QApplication(sys.argv)
+        app = existing_app or QtWidgets.QApplication(sys.argv or [""])
         if existing_app is None:
             app.setQuitOnLastWindowClosed(True)
 

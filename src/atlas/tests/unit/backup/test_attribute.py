@@ -99,6 +99,23 @@ def test_safe_zipinfo_date_overflow_and_value_error(
     assert attribute.safe_zipinfo_date(sample_file) == (1980, 1, 1, 0, 0, 0)
 
 
+def test_safe_zipinfo_date_y2k38_and_invalid_type(sample_file: Path) -> None:
+    """Verify safe_zipinfo_date handles modern post-2038 timestamps."""
+    y2k38_ts = 2380000000.0  # June 2045
+    date_tuple = attribute.safe_zipinfo_date(sample_file, mtime=y2k38_ts)
+    assert date_tuple[0] == 2045
+
+    # Year > 2107 is clamped to 2107 (max DOS date)
+    far_future = 4500000000.0
+    future_date = attribute.safe_zipinfo_date(sample_file, mtime=far_future)
+    assert future_date[0] <= 2107
+
+    # Invalid non-numeric mtime falls back cleanly without exception
+    assert attribute.safe_zipinfo_date(sample_file, mtime="invalid") == (
+        1980, 1, 1, 0, 0, 0
+    )
+
+
 # =============================================================================
 # TESTS — Get windows version
 # =============================================================================
