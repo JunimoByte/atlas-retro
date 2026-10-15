@@ -54,6 +54,11 @@ def test_qt_resolution_switches_to_pyqt4_when_available(
         "QApplication", (), {"exec_": lambda self: 0}
     )()
     mock_qtgui.QDialog = type("QDialog", (), {"exec_": lambda self: 0})()
+    mock_qtcore.QCoreApplication = type(
+        "QCoreApplication",
+        (),
+        {"translate": staticmethod(lambda ctx, key, *a: key)},
+    )
 
     monkeypatch.setitem(sys.modules, "PyQt4", mock_pyqt4)
     monkeypatch.setitem(sys.modules, "PyQt4.QtCore", mock_qtcore)
@@ -75,6 +80,9 @@ def test_qt_resolution_switches_to_pyqt4_when_available(
         # Verify exec alias exists
         assert hasattr(qt_mod.QtWidgets.QApplication, "exec")
         assert hasattr(qt_mod.QtWidgets.QDialog, "exec")
+        # Verify translate shim works
+        res = qt_mod.QtCore.QCoreApplication.translate("ctx", "hello")
+        assert res == "hello"
     finally:
         sys.modules.pop("atlas.compatibility.qt", None)
 
