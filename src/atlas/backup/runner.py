@@ -69,6 +69,10 @@ def run_pipeline(
         )
         result = pipeline.run()
         return result, pipeline
+    except KeyboardInterrupt:
+        if pipeline:
+            pipeline.cancel()
+        return PipelineResult.CANCELLED, pipeline
     except Exception as error:
         LOGGER.error(
             "run_pipeline failed unexpectedly: %s", error, exc_info=True

@@ -39,6 +39,7 @@ class _FallbackDirEntry:
         self.name = name
         self.path = os.path.join(dir_path, name)
         self._stat = None
+        self._lstat = None
 
     def is_dir(self, follow_symlinks=False):
         try:
@@ -54,16 +55,40 @@ class _FallbackDirEntry:
         except OSError:
             return False
 
+    def is_symlink(self):
+        try:
+            st = self.stat(follow_symlinks=False)
+            return stat.S_ISLNK(st.st_mode)
+        except OSError:
+            return False
+
     def stat(self, follow_symlinks=False):
-        if self._stat is None:
-            if follow_symlinks:
+        if follow_symlinks:
+            if self._stat is None:
                 self._stat = os.stat(self.path)
-            else:
+            return self._stat
+        else:
+            if self._lstat is None:
                 try:
-                    self._stat = os.lstat(self.path)
+                    self._lstat = os.lstat(self.path)
                 except AttributeError:
-                    self._stat = os.stat(self.path)
-        return self._stat
+                    self._lstat = os.stat(self.path)
+            return self._lstat
+
+
+class _ScandirContextWrapper:
+    """Ensure scandir iterator works as context manager on Python 3.5."""
+
+    def __init__(self, iterator):
+        self._iterator = iterator
+
+    def __enter__(self):
+        return self._iterator
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        close_fn = getattr(self._iterator, "close", None)
+        if callable(close_fn):
+            close_fn()
 
 
 class _FallbackScandir:
@@ -84,9 +109,12 @@ class _FallbackScandir:
 
 
 def safe_scandir(path):
-    """Return a scandir iterator with fallback for Python 3.4."""
+    """Return a scandir iterator with fallback for Python 3.4/3.5."""
     if _os_scandir is not None:
-        return _os_scandir(str(path))
+        entries = _os_scandir(str(path))
+        if hasattr(entries, "__enter__"):
+            return entries
+        return _ScandirContextWrapper(entries)
     return _FallbackScandir(path)
 
 
@@ -146,7 +174,16 @@ def relative_zip_path(file_path: Path, base_path: Path) -> str:
         str: Sanitized relative path string.
 
     """
-    rel_path = "{}/{}".format(base_path.name, file_path.relative_to(base_path))
-    rel_path = rel_path.replace(os.sep, "/")
+    try:
+        rel = file_path.relative_to(base_path)
+    except ValueError:
+        try:
+            rel = Path(os.path.abspath(str(file_path))).relative_to(
+                Path(os.path.abspath(str(base_path)))
+            )
+        except ValueError:
+            rel = file_path.name
+    rel_path = "{}/{}".format(base_path.name, rel)
+    rel_path = rel_path.replace("\\", "/").replace(os.sep, "/")
     rel_path = rel_path.replace("\x00", "_")
     return rel_path

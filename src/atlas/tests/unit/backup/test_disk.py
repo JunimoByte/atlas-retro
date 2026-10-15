@@ -91,6 +91,53 @@ def test_relative_zip_path(zipped_file: tuple) -> None:
     assert "\x00" not in result
 
 
+def test_relative_zip_path_fallback_on_unrelated_path(tmp_path: Path) -> None:
+    """Verify relative_zip_path falls back safely if path is unrelated."""
+    f = tmp_path / "somewhere_else" / "file.txt"
+    base = tmp_path / "base"
+    result = disk.relative_zip_path(f, base)
+    assert result.startswith("base/")
+    assert "file.txt" in result
+    assert "\\" not in result
+
+
+def test_fallback_direntry_methods(tmp_path: Path) -> None:
+    """Verify _FallbackDirEntry is_dir, is_file, is_symlink, and stat."""
+    f = tmp_path / "regular.txt"
+    f.write_text("hello")
+    d = tmp_path / "folder"
+    d.mkdir()
+
+    entry_f = disk._FallbackDirEntry(str(tmp_path), "regular.txt")
+    assert entry_f.is_file() is True
+    assert entry_f.is_dir() is False
+    assert entry_f.is_symlink() is False
+    assert entry_f.stat().st_size == 5
+
+    entry_d = disk._FallbackDirEntry(str(tmp_path), "folder")
+    assert entry_d.is_file() is False
+    assert entry_d.is_dir() is True
+    assert entry_d.is_symlink() is False
+
+
+def test_scandir_context_wrapper() -> None:
+    """Verify _ScandirContextWrapper manages lifecycle and calls close."""
+    closed = []
+
+    class DummyIter:
+        def __iter__(self):
+            return iter([1, 2, 3])
+
+        def close(self):
+            closed.append(True)
+
+    dummy = DummyIter()
+    with disk._ScandirContextWrapper(dummy) as it:
+        items = list(it)
+        assert items == [1, 2, 3]
+    assert closed == [True]
+
+
 # =============================================================================
 # TEST EXECUTION
 # =============================================================================

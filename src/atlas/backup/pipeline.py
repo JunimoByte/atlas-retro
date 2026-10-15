@@ -284,6 +284,9 @@ class Pipeline:
             self.scanned_callback, "{} / {} scanned".format(scanned, total)
         )
 
+        if self.is_cancelled():
+            return {}
+
         if (
             not browser_matches
             or sum(len(p) for p in browser_matches.values()) == 0

@@ -460,6 +460,9 @@ def compress(  # noqa: C901
             safe_unlink(zip_path)
             return None
 
+        if not zip_path.exists():
+            return None
+
         return zip_path
 
     except FileNotFoundError:

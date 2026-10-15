@@ -47,5 +47,20 @@ def test_run_pipeline_initialization_failure(
     assert pipeline is None
 
 
+@patch("atlas.backup.runner.Pipeline")
+def test_run_pipeline_keyboard_interrupt(
+    mock_pipeline_cls: MagicMock,
+) -> None:
+    """Verify that KeyboardInterrupt cancels pipeline and returns CANCELLED."""
+    mock_pipeline = mock_pipeline_cls.return_value
+    mock_pipeline.run.side_effect = KeyboardInterrupt()
+
+    result, pipeline = run_pipeline()
+
+    assert result == PipelineResult.CANCELLED
+    assert pipeline is mock_pipeline
+    mock_pipeline.cancel.assert_called_once()
+
+
 if __name__ == "__main__":
     sys.exit(pytest.main([__file__, "-v"]))

@@ -360,6 +360,18 @@ def test_verify_disk_space_negative_size_blocks(pipeline: Pipeline) -> None:
     assert emitted[0][0] == "Unknown"
 
 
+def test_scan_profiles_cancelled_does_not_emit_no_browsers(
+    pipeline: Pipeline,
+) -> None:
+    """Verify cancelled scan does not fire no_browsers_found callback."""
+    emitted = []
+    pipeline.no_browsers_found_callback = lambda: emitted.append(True)
+    pipeline.cancel()
+    res = pipeline.scan_profiles()
+    assert res == {}
+    assert emitted == []
+
+
 # =============================================================================
 # TEST EXECUTION
 # =============================================================================
