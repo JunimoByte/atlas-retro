@@ -66,6 +66,39 @@ def test_safe_zipinfo_date_missing_file() -> None:
     assert result == (1980, 1, 1, 0, 0, 0)
 
 
+def test_safe_zipinfo_date_overflow_and_value_error(
+    sample_file: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify fallback when timestamp raises ValueError or OverflowError."""
+    def raise_value_error(_):
+        raise ValueError("Year out of range")
+
+    monkeypatch.setattr(
+        attribute,
+        "datetime",
+        type(
+            "dt",
+            (),
+            {"fromtimestamp": staticmethod(raise_value_error)},
+        ),
+    )
+    assert attribute.safe_zipinfo_date(sample_file) == (1980, 1, 1, 0, 0, 0)
+
+    def raise_overflow_error(_):
+        raise OverflowError("Timestamp too large")
+
+    monkeypatch.setattr(
+        attribute,
+        "datetime",
+        type(
+            "dt",
+            (),
+            {"fromtimestamp": staticmethod(raise_overflow_error)},
+        ),
+    )
+    assert attribute.safe_zipinfo_date(sample_file) == (1980, 1, 1, 0, 0, 0)
+
+
 # =============================================================================
 # TESTS — Get windows version
 # =============================================================================

@@ -7,6 +7,7 @@ Unit tests for integration.py OS folder helpers.
 # IMPORTS
 # =============================================================================
 
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -150,7 +151,9 @@ def test_open_folder_platform_windows_startfile(temp_folder: Path) -> None:
     with patch("platform.system", return_value="windows"):
         with patch("os.startfile", create=True) as mock_start:
             integration._open_folder_platform(temp_folder)
-            mock_start.assert_called_once_with(str(temp_folder))
+            mock_start.assert_called_once_with(
+                os.path.normpath(str(temp_folder))
+            )
 
 
 def test_open_folder_platform_windows_fallback(temp_folder: Path) -> None:
@@ -164,7 +167,7 @@ def test_open_folder_platform_windows_fallback(temp_folder: Path) -> None:
             with patch("subprocess.Popen") as mock_popen:
                 integration._open_folder_platform(temp_folder)
                 mock_popen.assert_called_once_with(
-                    ["explorer.exe", str(temp_folder)]
+                    ["explorer.exe", os.path.normpath(str(temp_folder))]
                 )
 
 

@@ -242,7 +242,10 @@ class WindowsChromeManager:
 
             import ctypes
 
-            if not hasattr(ctypes.windll, "dwmapi"):
+            if (
+                not hasattr(ctypes, "windll")
+                or not hasattr(ctypes.windll, "dwmapi")
+            ):
                 return
 
             dwmapi = ctypes.windll.dwmapi
@@ -305,12 +308,14 @@ class WindowsThemer:
             if cls._supports_native():
                 cls._apply_native(window, dark)
             else:
-                if ThemeDetector._is_windows():
-                    ver_major = getattr(
-                        sys.getwindowsversion(), "major", 10
-                    )
-                else:
-                    ver_major = 10
+                ver_major = 10
+                if ThemeDetector._is_windows() and hasattr(
+                    sys, "getwindowsversion"
+                ):
+                    try:
+                        ver_major = sys.getwindowsversion().major
+                    except Exception:
+                        ver_major = 10
                 if ver_major >= 6:
                     try:
                         WindowsChromeManager.apply_chrome(window, dark)

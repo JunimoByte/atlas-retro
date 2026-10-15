@@ -9,6 +9,7 @@ Supports various message types with proper theming.
 # =============================================================================
 
 import logging
+import os
 import sys
 from typing import Optional
 
@@ -94,6 +95,18 @@ def show(
     """
     try:
         existing_app = QtWidgets.QApplication.instance()
+        if (
+            existing_app is None
+            and os.name == "posix"
+            and sys.platform != "darwin"
+            and not os.environ.get("DISPLAY")
+            and not os.environ.get("WAYLAND_DISPLAY")
+        ):
+            LOGGER.warning(
+                "Cannot show popup without display: %s - %s", title, text
+            )
+            return int(_BTN_OK)
+
         app = existing_app or QtWidgets.QApplication(sys.argv)
         if existing_app is None:
             app.setQuitOnLastWindowClosed(True)

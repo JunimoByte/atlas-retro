@@ -9,6 +9,7 @@ and output directory creation.
 # IMPORTS
 # =============================================================================
 
+import os
 import sys
 from pathlib import Path
 
@@ -143,6 +144,24 @@ def test_check_disk_space_failure_blocks_backup(
 
     assert ok is False
     assert available == "Unknown"
+
+
+def test_check_disk_space_handles_mkdir_oserror(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verify check_disk_space continues using parent if mkdir fails."""
+    target = tmp_path / "protected_subdir"
+
+    def fail_makedirs(path, exist_ok=False):
+        if str(target) in str(path):
+            raise OSError("Permission denied creating folder")
+        return None
+
+    monkeypatch.setattr(os, "makedirs", fail_makedirs)
+    ok, available = check_disk_space(1024, target)
+    # The parent tmp_path exists and has free space, so check succeeds
+    assert ok is True
+    assert available != "Unknown"
 
 
 # =============================================================================

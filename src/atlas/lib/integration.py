@@ -502,18 +502,19 @@ def _open_posix(folder_path: Path) -> None:
 
 def _open_windows(folder_path: Path) -> None:
     """Open a folder on Windows using os.startfile with explorer fallback."""
+    norm_path = os.path.normpath(str(folder_path))
     start = getattr(os, "startfile", None)
     if start is not None:
         try:
-            start(str(folder_path))
-            LOGGER.info("Opened folder: %s", folder_path)
+            start(norm_path)
+            LOGGER.info("Opened folder: %s", norm_path)
             return
         except Exception as err:
             LOGGER.debug("os.startfile failed: %s", err)
 
     try:
-        subprocess.Popen(["explorer.exe", str(folder_path)])
-        LOGGER.info("Opened folder via explorer.exe: %s", folder_path)
+        subprocess.Popen(["explorer.exe", norm_path])
+        LOGGER.info("Opened folder via explorer.exe: %s", norm_path)
     except Exception as err:
         LOGGER.warning("explorer.exe fallback failed: %s", err)
         raise RuntimeError("Could not open folder on Windows")

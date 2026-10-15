@@ -49,6 +49,7 @@ def test_qt_resolution_switches_to_pyqt4_when_available(
     )()
     mock_qtgui.QSizePolicy = type("QSizePolicy", (), {"Expanding": 7})()
     mock_qtgui.QDialogButtonBox = type("QDialogButtonBox", (), {"Ok": 1024})()
+    mock_qtgui.QPalette = type("QPalette", (), {"Window": 10})()
     mock_qtgui.QApplication = type(
         "QApplication", (), {"exec_": lambda self: 0}
     )()
@@ -70,6 +71,7 @@ def test_qt_resolution_switches_to_pyqt4_when_available(
         assert qt_mod.QtCore.Qt.Orientation.Horizontal == 1
         assert qt_mod.QtWidgets.QMessageBox.StandardButton.Ok == 1024
         assert qt_mod.QtWidgets.QMessageBox.Icon.Information == 1
+        assert qt_mod.QtGui.QPalette.ColorRole.Window == 10
         # Verify exec alias exists
         assert hasattr(qt_mod.QtWidgets.QApplication, "exec")
         assert hasattr(qt_mod.QtWidgets.QDialog, "exec")

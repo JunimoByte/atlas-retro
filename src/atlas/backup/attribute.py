@@ -53,7 +53,7 @@ def safe_zipinfo_date(
             dt.minute,
             dt.second,
         )
-    except OSError as error:
+    except (OSError, ValueError, OverflowError) as error:
         LOGGER.debug(
             "Failed to get file date for {}: {}".format(file_path, error)
         )

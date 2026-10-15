@@ -166,23 +166,36 @@ def get_directory_size(  # noqa: C901
 
 
 def _get_free_disk_space(path_str: str) -> Optional[int]:
-    """Get free disk space in bytes for path, with Windows XP fallbacks."""
+    """Get free disk space in bytes for path, with cross-platform fallbacks."""
     try:
         _, _, free = shutil.disk_usage(str(path_str))
         return free
     except OSError:
-        # Fallback to drive root (e.g. C:\) if subfolder path fails
-        try:
-            drive = os.path.splitdrive(str(path_str))[0]
-            if drive:
-                drive_root = (
-                    drive + "\\" if not drive.endswith("\\") else drive
-                )
-                if drive_root != str(path_str):
-                    _, _, free = shutil.disk_usage(drive_root)
-                    return free
-        except OSError:
-            pass
+        pass
+
+    # Fallback to existing parent directory if subfolder does not exist
+    try:
+        p = Path(os.path.abspath(str(path_str)))
+        while not p.exists() and p != p.parent:
+            p = p.parent
+        if p.exists() and str(p) != str(path_str):
+            _, _, free = shutil.disk_usage(str(p))
+            return free
+    except OSError:
+        pass
+
+    # Fallback to drive root (e.g. C:\) if subfolder path fails on Windows
+    try:
+        drive = os.path.splitdrive(str(path_str))[0]
+        if drive:
+            drive_root = (
+                drive + "\\" if not drive.endswith("\\") else drive
+            )
+            if drive_root != str(path_str):
+                _, _, free = shutil.disk_usage(drive_root)
+                return free
+    except OSError:
+        pass
     except Exception as error:
         LOGGER.debug("disk_usage error on %s: %s", path_str, error)
 
@@ -217,8 +230,11 @@ def check_disk_space(
             output_dir = get_zip_output_dir()
 
         output_dir_str = str(output_dir)
-        if not os.path.isdir(output_dir_str):
-            os.makedirs(output_dir_str, exist_ok=True)
+        try:
+            if not os.path.isdir(output_dir_str):
+                os.makedirs(output_dir_str, exist_ok=True)
+        except OSError:
+            pass
         free = _get_free_disk_space(output_dir_str)
         if free is None:
             LOGGER.warning(

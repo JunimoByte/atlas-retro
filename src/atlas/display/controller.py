@@ -27,7 +27,7 @@ LOGGER = logging.getLogger(__name__)
 # CONSTANTS
 # =============================================================================
 
-THREAD_WAIT_TIMEOUT_MS = 2000
+THREAD_WAIT_TIMEOUT_MS = 5000
 """Timeout in milliseconds for worker thread shutdown."""
 
 UPDATE_INTERVAL_MS = 300

@@ -74,8 +74,24 @@ def get_zip_output_dir() -> Path:
     except Exception:
         output_dir = ZIP_OUTPUT_DIR
     output_dir_str = str(output_dir)
-    if not os.path.isdir(output_dir_str):
-        os.makedirs(output_dir_str, exist_ok=True)
+    try:
+        if not os.path.isdir(output_dir_str):
+            os.makedirs(output_dir_str, exist_ok=True)
+    except OSError as err:
+        LOGGER.warning(
+            "Failed to create backup directory %s (%s). "
+            "Falling back to temp directory.",
+            output_dir_str,
+            err,
+        )
+        import tempfile
+
+        fallback = Path(tempfile.gettempdir()) / ATLAS_SUBDIR
+        try:
+            os.makedirs(str(fallback), exist_ok=True)
+            output_dir = fallback
+        except OSError:
+            pass
     return output_dir
 
 
@@ -199,6 +215,13 @@ def _write_file_to_zip(
             return False
         zip_file.writestr(zip_info, data)
         return True
+    except MemoryError as error:
+        LOGGER.warning(
+            "Skipped file due to insufficient memory: %s (%s)",
+            file_path,
+            error,
+        )
+        return False
     except OSError as error:
         # If disk is full, we must abort the backup completely.
         import errno

@@ -8,10 +8,12 @@ normalization.
 # IMPORTS
 # =============================================================================
 
+import os
 import sys
 import zipfile
 from pathlib import Path
 from typing import List
+from unittest.mock import patch
 
 import pytest
 
@@ -361,6 +363,55 @@ def test_unique_sources_handles_nonexistent_paths(tmp_path: Path) -> None:
     sources = archive._unique_sources([existing, nonexistent])
     assert len(sources) == 1
     assert sources[0].name == "existing"
+
+
+def test_safe_unlink_read_only_file(tmp_path: Path) -> None:
+    """Verify safe_unlink clears read-only attributes to delete file."""
+    import stat
+
+    from atlas.backup.disk import safe_unlink
+
+    sample = tmp_path / "readonly.txt"
+    sample.write_text("protected content")
+    os.chmod(str(sample), stat.S_IREAD)
+
+    safe_unlink(sample)
+    assert not sample.exists()
+
+
+def test_get_zip_output_dir_fallback_on_oserror(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify get_zip_output_dir falls back to tempdir if mkdir fails."""
+    import tempfile
+
+    monkeypatch.setattr(archive, "ZIP_OUTPUT_DIR", None)
+
+    orig_makedirs = os.makedirs
+
+    def fail_makedirs(name, exist_ok=False):
+        if "Backup" in str(name) and tempfile.gettempdir() not in str(name):
+            raise OSError("Permission denied")
+        return orig_makedirs(name, exist_ok=exist_ok)
+
+    monkeypatch.setattr(os, "makedirs", fail_makedirs)
+    out_dir = archive.get_zip_output_dir()
+    assert out_dir is not None
+    assert str(out_dir).startswith(tempfile.gettempdir())
+    monkeypatch.setattr(archive, "ZIP_OUTPUT_DIR", None)
+
+
+def test_write_file_to_zip_handles_memory_error(tmp_path: Path) -> None:
+    """Verify _write_file_to_zip skips file on MemoryError."""
+    sample = tmp_path / "big_sample.bin"
+    sample.write_bytes(b"data")
+    zi = zipfile.ZipInfo("big_sample.bin")
+
+    zip_dest = tmp_path / "test.zip"
+    with zipfile.ZipFile(str(zip_dest), "w") as zf:
+        with patch.object(Path, "open", side_effect=MemoryError("OOM")):
+            result = archive._write_file_to_zip(zf, sample, zi)
+            assert result is False
 
 
 # =============================================================================

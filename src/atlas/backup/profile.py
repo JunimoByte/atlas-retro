@@ -133,14 +133,20 @@ def _expand_wildcard(base: Path, rel_path: Path) -> List[Path]:
     """Recursively expand wildcards in each path segment."""
     # If no more segments, return base itself
     if not rel_path.parts:
-        return [base] if base.exists() else []
+        try:
+            return [base] if base.exists() else []
+        except OSError:
+            return []
 
     first, *rest = rel_path.parts
     matches = []
 
     # If first segment contains wildcard
     if "*" in first or "?" in first:
-        if not base.exists():
+        try:
+            if not base.exists():
+                return []
+        except OSError:
             return []
 
         try:

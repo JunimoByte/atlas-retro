@@ -67,6 +67,13 @@ def test_expand_wildcard_empty_rel_path_returns_base(tmp_path: Path) -> None:
     assert tmp_path in _expand_wildcard(tmp_path, Path(""))
 
 
+def test_expand_wildcard_handles_oserror_on_exists(tmp_path: Path) -> None:
+    """Verify that OSError on base.exists() returns empty list safely."""
+    with patch.object(Path, "exists", side_effect=OSError("Access denied")):
+        assert _expand_wildcard(tmp_path, Path("sub*")) == []
+        assert _expand_wildcard(tmp_path, Path("")) == []
+
+
 # =============================================================================
 # TESTS — Expand path by type
 # =============================================================================

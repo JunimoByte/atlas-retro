@@ -129,5 +129,6 @@ def run_cli(args=None):
     elif result == PipelineResult.INSUFFICIENT_DISK_SPACE:
         return 1
     else:
-        print("Backup failed. Reason: {}".format(result.name))
+        reason = getattr(result, "name", str(result))
+        print("Backup failed. Reason: {}".format(reason))
         return 1

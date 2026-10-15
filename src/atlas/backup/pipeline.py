@@ -226,12 +226,19 @@ class Pipeline:
 
     def _verify_disk_space(self, total_size: int) -> bool:
         """Validate if target disk has capacity for backup."""
-        check_size = max(0, total_size)
-        has_space, available_space = Size.check_disk_space(check_size)
+        if total_size < 0:
+            self._emit(
+                self.disk_space_error_callback,
+                "Unknown",
+                "Scan timed out or incomplete",
+            )
+            return False
+
+        has_space, available_space = Size.check_disk_space(total_size)
         if not has_space:
             self._emit(
                 self.disk_space_error_callback,
-                Size.format_size(check_size),
+                Size.format_size(total_size),
                 available_space,
             )
             return False

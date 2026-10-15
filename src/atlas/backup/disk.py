@@ -96,7 +96,7 @@ def safe_scandir(path):
 
 
 def safe_unlink(path: Path) -> None:
-    """Safely delete a file, suppressing errors.
+    """Safely delete a file, suppressing errors and clearing read-only flags.
 
     Args:
         path (Path): Path to the file to delete.
@@ -104,7 +104,16 @@ def safe_unlink(path: Path) -> None:
     """
     try:
         if path.exists():
-            path.unlink()
+            try:
+                path.unlink()
+            except PermissionError:
+                # On Windows, read-only files raise PermissionError on unlink.
+                # Clear the read-only attribute and retry.
+                try:
+                    os.chmod(str(path), stat.S_IWRITE)
+                    path.unlink()
+                except Exception:
+                    raise
     except (OSError, FileNotFoundError) as error:
         LOGGER.warning("Failed to delete {}: {}".format(path, error))
 

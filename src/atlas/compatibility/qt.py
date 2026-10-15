@@ -230,6 +230,7 @@ for _parent, _attr in [
     (QtWidgets.QDialogButtonBox, "StandardButton"),
     (QtWidgets.QMessageBox, "StandardButton"),
     (QtWidgets.QMessageBox, "Icon"),
+    (QtGui.QPalette, "ColorRole"),
 ]:
     _target = getattr(_parent, _attr, None)
     _wrapped = _MetaScope(

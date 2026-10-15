@@ -349,6 +349,17 @@ def test_run_returns_insufficient_disk_space_when_check_fails(
     assert result == PipelineResult.INSUFFICIENT_DISK_SPACE
 
 
+def test_verify_disk_space_negative_size_blocks(pipeline: Pipeline) -> None:
+    """Verify that negative total size (scan failure) blocks backup."""
+    emitted = []
+    pipeline.disk_space_error_callback = lambda req, avail: emitted.append(
+        (req, avail)
+    )
+    assert pipeline._verify_disk_space(-1) is False
+    assert len(emitted) == 1
+    assert emitted[0][0] == "Unknown"
+
+
 # =============================================================================
 # TEST EXECUTION
 # =============================================================================

@@ -171,6 +171,20 @@ def test_show_question_returns_expected(
     assert popup.show_question("Q", "Confirm?") is expected_result
 
 
+def test_show_headless_without_display_returns_ok(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify show returns _BTN_OK on headless POSIX when display is unset."""
+    monkeypatch.setattr(popup.QtWidgets.QApplication, "instance", lambda: None)
+    monkeypatch.setattr(popup.os, "name", "posix")
+    monkeypatch.setattr(popup.sys, "platform", "linux")
+    monkeypatch.delenv("DISPLAY", raising=False)
+    monkeypatch.delenv("WAYLAND_DISPLAY", raising=False)
+
+    result = popup.show("Title", "Message")
+    assert result == popup.BUTTON_MAP["ACKNOWLEDGE"]
+
+
 # =============================================================================
 # TEST EXECUTION
 # =============================================================================
